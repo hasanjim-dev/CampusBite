@@ -436,4 +436,4 @@ INSERT INTO complaint_categories (name) VALUES
 -- Default admin. Replace the hash with a real bcrypt hash before use, e.g.
 --   node -e "console.log(require('bcryptjs').hashSync('YourPassword',10))"
 INSERT INTO users (name, email, password_hash, role)
-VALUES ('Admin', 'admin@campusbite.com', 'REPLACE_WITH_BCRYPT_HASH', 'admin');
+VALUES ('Admin', 'admin@campusbite.com', '$2b$10$eTPvkAfQ8sftc9LOO/SIg.YzXTJUh4EVSpuDiCysvUL0Y/2ZK6Miq', 'admin');
