@@ -437,3 +437,20 @@ INSERT INTO complaint_categories (name) VALUES
 --   node -e "console.log(require('bcryptjs').hashSync('YourPassword',10))"
 INSERT INTO users (name, email, password_hash, role)
 VALUES ('Admin', 'admin@campusbite.com', '$2b$10$eTPvkAfQ8sftc9LOO/SIg.YzXTJUh4EVSpuDiCysvUL0Y/2ZK6Miq', 'admin');
+
+-- =====================================
+-- Logout API: Token Blacklist
+-- =====================================
+
+CREATE TABLE IF NOT EXISTS token_blacklist (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    token_hash CHAR(64) NOT NULL UNIQUE,
+
+    expires_at DATETIME NOT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_token_expiry (expires_at)
+);
+
