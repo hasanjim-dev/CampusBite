@@ -4,6 +4,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 
 const userRoutes = require("./routes/userRoutes");
+const shopRoutes = require("./routes/shopRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const authRoutes = require("./routes/authRoutes");
 
@@ -39,6 +40,9 @@ app.use("/api/auth", authRoutes);
 
 // User routes
 app.use("/api/users", userRoutes);
+
+// Shop routes
+app.use("/api/shops", shopRoutes);
 
 // Admin routes
 app.use("/api/admin", adminRoutes);
