@@ -19,6 +19,7 @@ export default function Navbar() {
     student: [
       { to: '/favorites', label: 'Favorites' },
       { to: '/notifications', label: 'Notifications' },
+      { to: '/complaints/new', label: 'Complaints' },
       { to: '/profile', label: 'My Profile' },
     ],
 
@@ -65,7 +66,6 @@ export default function Navbar() {
           CampusBite
         </Link>
 
-        {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6">
 
           {links.map((link) => (
@@ -113,7 +113,6 @@ export default function Navbar() {
 
         </div>
 
-        {/* Mobile Menu Button */}
         <button
           className="md:hidden text-gray-700"
           onClick={() => setOpen(!open)}
@@ -124,7 +123,6 @@ export default function Navbar() {
 
       </div>
 
-      {/* Mobile Navigation */}
       {open && (
         <div className="md:hidden border-t bg-white px-4 py-4 flex flex-col gap-4">
 
