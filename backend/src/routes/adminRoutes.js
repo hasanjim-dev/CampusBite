@@ -1,17 +1,24 @@
 
 const express = require("express");
 
-const router = express.Router();
-
 const authMiddleware = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
 
 const {
   getAllUsers,
   getUserById,
-  updateUserStatus
+  updateUserStatus,
+  deactivateShop,
+  activateShop
 } = require("../controllers/adminController");
-// GET: View all users (Admin only)
+
+const router = express.Router();
+
+// ==========================================
+// ADMIN: USER MANAGEMENT
+// ==========================================
+
+// GET: View all users
 router.get(
   "/users",
   authMiddleware,
@@ -19,7 +26,7 @@ router.get(
   getAllUsers
 );
 
-// GET: View one user by ID (Admin only)
+// GET: View one user by ID
 router.get(
   "/users/:id",
   authMiddleware,
@@ -27,12 +34,33 @@ router.get(
   getUserById
 );
 
-// PATCH: Update user status (Admin only)
+// PATCH: Update user status
 router.patch(
   "/users/:id/status",
   authMiddleware,
   authorizeRoles("admin"),
   updateUserStatus
+);
+
+
+// ==========================================
+// ADMIN: SHOP MANAGEMENT
+// ==========================================
+
+// PATCH: Deactivate any shop
+router.patch(
+  "/shops/:id/deactivate",
+  authMiddleware,
+  authorizeRoles("admin"),
+  deactivateShop
+);
+
+// PATCH: Activate any shop
+router.patch(
+  "/shops/:id/activate",
+  authMiddleware,
+  authorizeRoles("admin"),
+  activateShop
 );
 
 module.exports = router;

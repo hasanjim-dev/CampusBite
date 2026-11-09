@@ -1,10 +1,124 @@
-const pool = require("../config/db");
 
-// GET: Admin can view all users
+const db = require("../config/db");
+
+// ==========================================
+// ADMIN: DEACTIVATE ANY SHOP
+// ==========================================
+
+const deactivateShop = async (req, res) => {
+  try {
+    const shopId = Number(req.params.id);
+
+    if (!Number.isInteger(shopId) || shopId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid shop ID."
+      });
+    }
+
+    const [shops] = await db.query(
+      "SELECT id, name, is_active FROM shops WHERE id = ?",
+      [shopId]
+    );
+
+    if (shops.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Shop not found."
+      });
+    }
+
+    if (Number(shops[0].is_active) === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Shop is already deactivated."
+      });
+    }
+
+    await db.query(
+      "UPDATE shops SET is_active = 0 WHERE id = ?",
+      [shopId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Shop deactivated successfully."
+    });
+
+  } catch (error) {
+    console.error("Deactivate Shop Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error."
+    });
+  }
+};
+
+
+// ==========================================
+// ADMIN: ACTIVATE ANY SHOP
+// ==========================================
+
+const activateShop = async (req, res) => {
+  try {
+    const shopId = Number(req.params.id);
+
+    if (!Number.isInteger(shopId) || shopId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid shop ID."
+      });
+    }
+
+    const [shops] = await db.query(
+      "SELECT id, name, is_active FROM shops WHERE id = ?",
+      [shopId]
+    );
+
+    if (shops.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Shop not found."
+      });
+    }
+
+    if (Number(shops[0].is_active) === 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Shop is already active."
+      });
+    }
+
+    await db.query(
+      "UPDATE shops SET is_active = 1 WHERE id = ?",
+      [shopId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Shop activated successfully."
+    });
+
+  } catch (error) {
+    console.error("Activate Shop Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error."
+    });
+  }
+};
+
+
+// ==========================================
+// ADMIN: VIEW ALL USERS
+// ==========================================
+
 async function getAllUsers(req, res) {
   try {
-    // Pagination values
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+
     const limit = Math.min(
       100,
       Math.max(1, parseInt(req.query.limit, 10) || 10)
@@ -12,15 +126,13 @@ async function getAllUsers(req, res) {
 
     const offset = (page - 1) * limit;
 
-    // Get total number of users
-    const [countResult] = await pool.execute(
+    const [countResult] = await db.execute(
       "SELECT COUNT(*) AS total FROM users"
     );
 
     const totalUsers = countResult[0].total;
 
-    // Retrieve users without password hashes
-    const [users] = await pool.execute(
+    const [users] = await db.execute(
       `SELECT
         id,
         name,
@@ -39,67 +151,6 @@ async function getAllUsers(req, res) {
     return res.status(200).json({
       success: true,
       message: "Users retrieved successfully.",
-
-      pagination: {
-        totalUsers,
-        currentPage: page,
-        totalPages: Math.ceil(totalUsers / limit),
-        limit
-      },
-
-      users
-    });
-
-  } catch (error) {
-    console.error("Get all users error:", error.message);
-
-    return res.status(500).json({
-      success: false,
-      message: "Could not retrieve users."
-    });
-  }
-}
-
-
-
-
-// GET: Admin can view all users
-async function getAllUsers(req, res) {
-  try {
-    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-
-    const limit = Math.min(
-      100,
-      Math.max(1, parseInt(req.query.limit, 10) || 10)
-    );
-
-    const offset = (page - 1) * limit;
-
-    const [countResult] = await pool.execute(
-      "SELECT COUNT(*) AS total FROM users"
-    );
-
-    const totalUsers = countResult[0].total;
-
-    const [users] = await pool.execute(
-      `SELECT
-        id,
-        name,
-        email,
-        role,
-        status,
-        avatar_url,
-        created_at,
-        updated_at
-       FROM users
-       ORDER BY id DESC
-       LIMIT ? OFFSET ?`,
-      [limit, offset]
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: "Users retrieved successfully.",
       pagination: {
         totalUsers,
         currentPage: page,
@@ -120,13 +171,14 @@ async function getAllUsers(req, res) {
 }
 
 
-// GET: Admin can view one user's details
+// ==========================================
+// ADMIN: VIEW ONE USER
+// ==========================================
+
 async function getUserById(req, res) {
   try {
-    // Get user ID from URL
     const userId = Number(req.params.id);
 
-    // Validate user ID
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(400).json({
         success: false,
@@ -134,8 +186,7 @@ async function getUserById(req, res) {
       });
     }
 
-    // Find user without password hash
-    const [users] = await pool.execute(
+    const [users] = await db.execute(
       `SELECT
         id,
         name,
@@ -150,7 +201,6 @@ async function getUserById(req, res) {
       [userId]
     );
 
-    // User not found
     if (users.length === 0) {
       return res.status(404).json({
         success: false,
@@ -158,7 +208,6 @@ async function getUserById(req, res) {
       });
     }
 
-    // Return user details
     return res.status(200).json({
       success: true,
       message: "User details retrieved successfully.",
@@ -175,13 +224,16 @@ async function getUserById(req, res) {
   }
 }
 
-// PATCH: Admin can update a user's account status
+
+// ==========================================
+// ADMIN: UPDATE USER STATUS
+// ==========================================
+
 async function updateUserStatus(req, res) {
   try {
     const userId = Number(req.params.id);
     const { status } = req.body;
 
-    // Validate user ID
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(400).json({
         success: false,
@@ -189,8 +241,11 @@ async function updateUserStatus(req, res) {
       });
     }
 
-    // Validate status
-    const allowedStatuses = ["active", "restricted", "deactivated"];
+    const allowedStatuses = [
+      "active",
+      "restricted",
+      "deactivated"
+    ];
 
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({
@@ -199,7 +254,6 @@ async function updateUserStatus(req, res) {
       });
     }
 
-    // Prevent admin from changing their own status
     if (userId === req.user.id) {
       return res.status(400).json({
         success: false,
@@ -207,8 +261,7 @@ async function updateUserStatus(req, res) {
       });
     }
 
-    // Check whether user exists
-    const [users] = await pool.execute(
+    const [users] = await db.execute(
       "SELECT id, name, email, role, status FROM users WHERE id = ?",
       [userId]
     );
@@ -220,8 +273,7 @@ async function updateUserStatus(req, res) {
       });
     }
 
-    // Update user status
-    await pool.execute(
+    await db.execute(
       "UPDATE users SET status = ? WHERE id = ?",
       [status, userId]
     );
@@ -246,8 +298,13 @@ async function updateUserStatus(req, res) {
 }
 
 
+// ==========================================
+// EXPORT ALL ADMIN CONTROLLERS
+// ==========================================
 
 module.exports = {
+  deactivateShop,
+  activateShop,
   getAllUsers,
   getUserById,
   updateUserStatus
