@@ -1,20 +1,12 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './routes/ProtectedRoute'
+import MainLayout from './layouts/MainLayout'
 import Login from './pages/auth/Login'
+import Register from './pages/auth/Register'
 
-const Placeholder = ({ title }) => <div className="p-10 text-2xl">{title}</div>
-
-function Home() {
-  const { user, logout } = useAuth()
-  return (
-    <div className="p-10">
-      <p>Hello {user?.name} ({user?.role})</p>
-      <button onClick={logout} className="mt-4 px-4 py-2 bg-gray-800 text-white rounded">Logout</button>
-    </div>
-  )
-}
+const Placeholder = ({ title }) => <div className="text-2xl">{title}</div>
 
 export default function App() {
   return (
@@ -23,12 +15,22 @@ export default function App() {
         <Toaster />
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Home />} />
-          <Route element={<ProtectedRoute roles={['shop_owner']} />}>
-            <Route path="/owner" element={<Placeholder title="Owner Dashboard" />} />
-          </Route>
-          <Route element={<ProtectedRoute roles={['admin']} />}>
-            <Route path="/admin" element={<Placeholder title="Admin Dashboard" />} />
+          <Route path="/register" element={<Register />} />
+
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<Placeholder title="Review Feed" />} />
+            <Route path="/shops" element={<Placeholder title="Shops" />} />
+            <Route path="/events" element={<Placeholder title="Events" />} />
+
+            <Route element={<ProtectedRoute roles={['student']} />}>
+              <Route path="/favorites" element={<Placeholder title="Favorites" />} />
+            </Route>
+            <Route element={<ProtectedRoute roles={['shop_owner']} />}>
+              <Route path="/owner" element={<Placeholder title="Owner Dashboard" />} />
+            </Route>
+            <Route element={<ProtectedRoute roles={['admin']} />}>
+              <Route path="/admin" element={<Placeholder title="Admin Dashboard" />} />
+            </Route>
           </Route>
         </Routes>
       </BrowserRouter>
