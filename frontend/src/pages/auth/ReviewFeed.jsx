@@ -1,7 +1,6 @@
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-
 import {
   Star,
   Heart,
@@ -12,11 +11,15 @@ import {
   Utensils,
   MapPin,
   ArrowRight,
+  Send,
+  Reply,
+  Pencil,
+  Trash2,
+  X,
 } from 'lucide-react'
 
 import { useAuth } from '../../context/AuthContext'
 
-// Demo Reviews
 const initialReviews = [
   {
     id: 1,
@@ -29,7 +32,6 @@ const initialReviews = [
     time: '2 hours ago',
     text: 'The burger was really delicious! The chicken was juicy and the price was reasonable. Definitely recommended.',
     likes: 24,
-    comments: 8,
     color: 'bg-orange-100 text-orange-700',
     edited: false,
   },
@@ -44,7 +46,6 @@ const initialReviews = [
     time: '5 hours ago',
     text: 'Good coffee and a nice place to hang out with friends between classes. Could be a little less sweet.',
     likes: 16,
-    comments: 4,
     color: 'bg-blue-100 text-blue-700',
     edited: true,
   },
@@ -59,26 +60,282 @@ const initialReviews = [
     time: 'Yesterday',
     text: 'Fresh and tasty sandwich. Service was quick too. A good option for a short break.',
     likes: 12,
-    comments: 3,
     color: 'bg-green-100 text-green-700',
     edited: false,
   },
 ]
 
+const initialComments = {
+  1: [
+    {
+      id: 101,
+      userId: 'demo-1',
+      name: 'Rahim Ahmed',
+      text: 'I tried this burger too. Really good!',
+      replies: [
+        {
+          id: 201,
+          userId: 'demo-2',
+          name: 'Nusrat Jahan',
+          text: 'Glad you liked it!',
+        },
+      ],
+    },
+    {
+      id: 102,
+      userId: 'demo-2',
+      name: 'Sadia Islam',
+      text: 'How much does it cost?',
+      replies: [],
+    },
+  ],
+  2: [
+    {
+      id: 103,
+      userId: 'demo-1',
+      name: 'Rahim Ahmed',
+      text: 'I prefer less sugar too.',
+      replies: [],
+    },
+  ],
+  3: [
+    {
+      id: 104,
+      userId: 'demo-3',
+      name: 'Tanvir Hasan',
+      text: 'Sounds delicious!',
+      replies: [],
+    },
+  ],
+}
+
 const categories = ['All Reviews', 'Food', 'Drinks', 'Snacks']
 
-// Review Card Component
-function ReviewCard({ review, liked, onLike }) {
+function CommentItem({
+  comment,
+  currentUserId,
+  onEdit,
+  onDelete,
+  onReply,
+  onEditReply,
+  onDeleteReply,
+}) {
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState(comment.text)
+  const [replying, setReplying] = useState(false)
+  const [replyText, setReplyText] = useState('')
+
+  const isOwner = currentUserId === comment.userId
+
+  const saveEdit = () => {
+    if (!editText.trim()) return
+
+    onEdit(comment.id, editText.trim())
+    setEditing(false)
+  }
+
+  const submitReply = (e) => {
+    e.preventDefault()
+
+    if (!replyText.trim()) return
+
+    onReply(comment.id, replyText.trim())
+    setReplyText('')
+    setReplying(false)
+  }
+
+  return (
+    <div className="border-l-2 border-gray-100 pl-4">
+      <div className="rounded-xl bg-gray-50 p-3">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-semibold text-gray-800">
+            {comment.name}
+          </p>
+
+          {isOwner && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditText(comment.text)
+                  setEditing(!editing)
+                }}
+                className="text-gray-400 hover:text-orange-600"
+                title="Edit comment"
+              >
+                <Pencil size={14} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onDelete(comment.id)}
+                className="text-gray-400 hover:text-red-600"
+                title="Delete comment"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {editing ? (
+          <div className="mt-2 space-y-2">
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-gray-200 bg-white p-2 text-sm outline-none focus:border-orange-400"
+            />
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={saveEdit}
+                className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-medium text-white"
+              >
+                Save
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="rounded-lg border px-3 py-1.5 text-xs"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-1 text-sm leading-6 text-gray-600">
+            {comment.text}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setReplying(!replying)}
+          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700"
+        >
+          <Reply size={13} />
+          Reply
+        </button>
+
+        {replying && (
+          <form onSubmit={submitReply} className="mt-3 flex gap-2">
+            <input
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Write a reply..."
+              className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
+            />
+
+            <button
+              type="submit"
+              className="rounded-lg bg-orange-600 px-3 text-white hover:bg-orange-700"
+            >
+              <Send size={15} />
+            </button>
+          </form>
+        )}
+      </div>
+
+      {comment.replies?.length > 0 && (
+        <div className="mt-3 space-y-3">
+          {comment.replies.map((reply) => {
+            const isReplyOwner = currentUserId === reply.userId
+
+            return (
+              <div
+                key={reply.id}
+                className="ml-3 rounded-xl bg-white p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-gray-800">
+                    {reply.name}
+                  </p>
+
+                  {isReplyOwner && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = window.prompt(
+                            'Edit your reply:',
+                            reply.text
+                          )
+
+                          if (updated?.trim()) {
+                            onEditReply(comment.id, reply.id, updated.trim())
+                          }
+                        }}
+                        className="text-gray-400 hover:text-orange-600"
+                        title="Edit reply"
+                      >
+                        <Pencil size={13} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onDeleteReply(comment.id, reply.id)}
+                        className="text-gray-400 hover:text-red-600"
+                        title="Delete reply"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <p className="mt-1 text-sm text-gray-600">
+                  {reply.text}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ReviewCard({
+  review,
+  liked,
+  comments,
+  currentUserId,
+  currentUserName,
+  onLike,
+  onAddComment,
+  onEditComment,
+  onDeleteComment,
+  onAddReply,
+  onEditReply,
+  onDeleteReply,
+  onRequireLogin,
+}) {
+  const [showComments, setShowComments] = useState(false)
+  const [commentText, setCommentText] = useState('')
+
+  const submitComment = (e) => {
+    e.preventDefault()
+
+    if (!commentText.trim()) return
+
+    if (!currentUserId) {
+      onRequireLogin()
+      return
+    }
+
+    onAddComment(review.id, commentText.trim())
+    setCommentText('')
+    setShowComments(true)
+  }
+
   return (
     <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6">
-
-      {/* Reviewer Information */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-
-          <div
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-semibold ${review.color}`}
-          >
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-semibold ${review.color}`}>
             {review.initials}
           </div>
 
@@ -90,13 +347,9 @@ function ReviewCard({ review, liked, onLike }) {
             <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
               <Clock3 size={13} />
               {review.time}
-
-              {review.edited && (
-                <span className="ml-1">· Edited</span>
-              )}
+              {review.edited && <span className="ml-1">· Edited</span>}
             </p>
           </div>
-
         </div>
 
         <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700">
@@ -104,11 +357,8 @@ function ReviewCard({ review, liked, onLike }) {
         </span>
       </div>
 
-      {/* Food Information */}
       <div className="mt-5 rounded-xl bg-gray-50 p-4">
-
         <div className="flex flex-wrap items-center justify-between gap-2">
-
           <div>
             <p className="text-sm font-semibold text-gray-900">
               {review.food}
@@ -120,7 +370,6 @@ function ReviewCard({ review, liked, onLike }) {
             </p>
           </div>
 
-          {/* Star Rating */}
           <div className="flex items-center gap-1 rounded-lg bg-white px-2.5 py-1.5">
             {[1, 2, 3, 4, 5].map((number) => (
               <Star
@@ -138,59 +387,121 @@ function ReviewCard({ review, liked, onLike }) {
               {review.rating}.0
             </span>
           </div>
-
         </div>
       </div>
 
-      {/* Review Text */}
       <p className="mt-4 text-sm leading-7 text-gray-600">
         {review.text}
       </p>
 
-      {/* Like and Comment */}
       <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
-
         <button
           type="button"
           onClick={onLike}
           className={`flex items-center gap-2 text-sm font-medium transition ${
-            liked
-              ? 'text-rose-600'
-              : 'text-gray-500 hover:text-rose-600'
+            liked ? 'text-rose-600' : 'text-gray-500 hover:text-rose-600'
           }`}
         >
-          <Heart
-            size={18}
-            className={liked ? 'fill-current' : ''}
-          />
-
+          <Heart size={18} className={liked ? 'fill-current' : ''} />
           {review.likes + (liked ? 1 : 0)} Likes
         </button>
 
         <button
           type="button"
+          onClick={() => setShowComments(!showComments)}
           className="flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-orange-600"
         >
           <MessageCircle size={18} />
-          {review.comments} Comments
+          {comments.length} Comments
         </button>
-
       </div>
+
+      {showComments && (
+        <div className="mt-5 border-t border-gray-100 pt-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h4 className="font-semibold text-gray-900">
+              Comments ({comments.length})
+            </h4>
+
+            <button
+              type="button"
+              onClick={() => setShowComments(false)}
+              className="text-gray-400 hover:text-gray-700"
+              title="Close comments"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <form onSubmit={submitComment} className="mb-5 flex gap-2">
+            <input
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Write a comment..."
+              className="min-w-0 flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+            />
+
+            <button
+              type="submit"
+              className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 text-sm font-medium text-white transition hover:bg-orange-700"
+            >
+              <Send size={16} />
+              <span className="hidden sm:inline">Send</span>
+            </button>
+          </form>
+
+          {comments.length > 0 ? (
+            <div className="space-y-4">
+              {comments.map((comment) => (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  currentUserId={currentUserId}
+                  onEdit={(commentId, text) =>
+                    onEditComment(review.id, commentId, text)
+                  }
+                  onDelete={(commentId) =>
+                    onDeleteComment(review.id, commentId)
+                  }
+                  onReply={(commentId, text) =>
+                    onAddReply(review.id, commentId, text)
+                  }
+                  onEditReply={(commentId, replyId, text) =>
+                    onEditReply(review.id, commentId, replyId, text)
+                  }
+                  onDeleteReply={(commentId, replyId) =>
+                    onDeleteReply(review.id, commentId, replyId)
+                  }
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-gray-400">
+              No comments yet. Be the first to comment!
+            </p>
+          )}
+        </div>
+      )}
     </article>
   )
 }
 
-// Main Review Feed Component
 export default function ReviewFeed() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
   const [reviews] = useState(initialReviews)
+  const [comments, setComments] = useState(initialComments)
   const [likedReviews, setLikedReviews] = useState([])
   const [activeCategory, setActiveCategory] = useState('All Reviews')
   const [search, setSearch] = useState('')
 
-  // Filter Reviews
+  const currentUserId = user
+    ? String(user.id || user.email || user.name)
+    : null
+
+  const currentUserName = user?.name || 'CampusBite User'
+
   const filteredReviews = reviews.filter((review) => {
     const matchesCategory =
       activeCategory === 'All Reviews' ||
@@ -207,23 +518,19 @@ export default function ReviewFeed() {
     return matchesCategory && matchesSearch
   })
 
-  // Handle Like
   const handleLike = (reviewId) => {
     if (!user) {
       navigate('/login')
       return
     }
 
-    setLikedReviews((previous) => {
-      if (previous.includes(reviewId)) {
-        return previous.filter((id) => id !== reviewId)
-      }
-
-      return [...previous, reviewId]
-    })
+    setLikedReviews((previous) =>
+      previous.includes(reviewId)
+        ? previous.filter((id) => id !== reviewId)
+        : [...previous, reviewId]
+    )
   }
 
-  // Handle Create Review
   const handleCreateReview = () => {
     if (!user) {
       navigate('/login')
@@ -233,14 +540,120 @@ export default function ReviewFeed() {
     navigate('/reviews/new')
   }
 
+  const handleAddComment = (reviewId, text) => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+
+    const newComment = {
+      id: Date.now(),
+      userId: currentUserId,
+      name: currentUserName,
+      text,
+      replies: [],
+    }
+
+    setComments((previous) => ({
+      ...previous,
+      [reviewId]: [...(previous[reviewId] || []), newComment],
+    }))
+  }
+
+  const handleEditComment = (reviewId, commentId, text) => {
+    setComments((previous) => ({
+      ...previous,
+      [reviewId]: previous[reviewId].map((comment) =>
+        comment.id === commentId && comment.userId === currentUserId
+          ? { ...comment, text }
+          : comment
+      ),
+    }))
+  }
+
+  const handleDeleteComment = (reviewId, commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) {
+      return
+    }
+
+    setComments((previous) => ({
+      ...previous,
+      [reviewId]: previous[reviewId].filter(
+        (comment) =>
+          !(comment.id === commentId && comment.userId === currentUserId)
+      ),
+    }))
+  }
+
+  const handleAddReply = (reviewId, commentId, text) => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+
+    const newReply = {
+      id: Date.now(),
+      userId: currentUserId,
+      name: currentUserName,
+      text,
+    }
+
+    setComments((previous) => ({
+      ...previous,
+      [reviewId]: previous[reviewId].map((comment) =>
+        comment.id === commentId
+          ? {
+              ...comment,
+              replies: [...(comment.replies || []), newReply],
+            }
+          : comment
+      ),
+    }))
+  }
+
+  const handleEditReply = (reviewId, commentId, replyId, text) => {
+    setComments((previous) => ({
+      ...previous,
+      [reviewId]: previous[reviewId].map((comment) =>
+        comment.id === commentId
+          ? {
+              ...comment,
+              replies: comment.replies.map((reply) =>
+                reply.id === replyId && reply.userId === currentUserId
+                  ? { ...reply, text }
+                  : reply
+              ),
+            }
+          : comment
+      ),
+    }))
+  }
+
+  const handleDeleteReply = (reviewId, commentId, replyId) => {
+    if (!window.confirm('Are you sure you want to delete this reply?')) {
+      return
+    }
+
+    setComments((previous) => ({
+      ...previous,
+      [reviewId]: previous[reviewId].map((comment) =>
+        comment.id === commentId
+          ? {
+              ...comment,
+              replies: comment.replies.filter(
+                (reply) =>
+                  !(reply.id === replyId && reply.userId === currentUserId)
+              ),
+            }
+          : comment
+      ),
+    }))
+  }
+
   return (
     <div className="space-y-8 pb-10">
-
-      {/* Hero Section */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-orange-600 to-amber-500 px-6 py-10 text-white sm:px-10 sm:py-14">
-
         <div className="relative z-10 max-w-2xl">
-
           <span className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-xs font-medium">
             <Utensils size={14} />
             Your Campus Food Community
@@ -265,20 +678,14 @@ export default function ReviewFeed() {
             <Plus size={18} />
             Write a Review
           </button>
-
         </div>
 
         <div className="pointer-events-none absolute -right-10 -top-12 hidden h-72 w-72 rounded-full border-[35px] border-white/10 sm:block" />
-
         <div className="pointer-events-none absolute -bottom-24 right-36 hidden h-56 w-56 rounded-full bg-white/10 sm:block" />
-
       </section>
 
-      {/* Feed Heading and Search */}
       <section>
-
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-
           <div>
             <p className="text-sm font-semibold uppercase tracking-wider text-orange-600">
               CampusBite Community
@@ -293,9 +700,7 @@ export default function ReviewFeed() {
             </p>
           </div>
 
-          {/* Search Input */}
           <div className="relative w-full sm:max-w-xs">
-
             <Search
               size={18}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -308,14 +713,10 @@ export default function ReviewFeed() {
               placeholder="Search food or shop..."
               className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
             />
-
           </div>
-
         </div>
 
-        {/* Category Filters */}
         <div className="mt-6 flex flex-wrap gap-2">
-
           {categories.map((category) => (
             <button
               key={category}
@@ -330,29 +731,32 @@ export default function ReviewFeed() {
               {category}
             </button>
           ))}
-
         </div>
       </section>
 
-      {/* Review List */}
       <section className="space-y-5">
-
         {filteredReviews.length > 0 ? (
           filteredReviews.map((review) => (
             <ReviewCard
               key={review.id}
               review={review}
               liked={likedReviews.includes(review.id)}
+              comments={comments[review.id] || []}
+              currentUserId={currentUserId}
+              currentUserName={currentUserName}
               onLike={() => handleLike(review.id)}
+              onAddComment={handleAddComment}
+              onEditComment={handleEditComment}
+              onDeleteComment={handleDeleteComment}
+              onAddReply={handleAddReply}
+              onEditReply={handleEditReply}
+              onDeleteReply={handleDeleteReply}
+              onRequireLogin={() => navigate('/login')}
             />
           ))
         ) : (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-5 py-12 text-center">
-
-            <Search
-              size={30}
-              className="mx-auto text-gray-300"
-            />
+            <Search size={30} className="mx-auto text-gray-300" />
 
             <h3 className="mt-3 font-semibold text-gray-800">
               No reviews found
@@ -361,15 +765,11 @@ export default function ReviewFeed() {
             <p className="mt-1 text-sm text-gray-500">
               Try another search or category.
             </p>
-
           </div>
         )}
-
       </section>
 
-      {/* Bottom Call to Action */}
       <section className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-orange-100 bg-orange-50 p-6 text-center sm:flex-row sm:text-left">
-
         <div>
           <h3 className="text-lg font-bold text-gray-900">
             Tried something delicious?
@@ -388,9 +788,7 @@ export default function ReviewFeed() {
           Share Your Review
           <ArrowRight size={17} />
         </button>
-
       </section>
-
     </div>
   )
 }

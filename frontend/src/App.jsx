@@ -26,12 +26,22 @@ import Notifications from './pages/Notifications'
 import Profile from './pages/Profile'
 
 import OwnerDashboard from './pages/OwnerDashboard'
+import ManageShop from './pages/owner/ManageShop'
+import ManageMenu from './pages/owner/ManageMenu'
 
-function Placeholder({ title }) {
+import AdminDashboard from './pages/admin/AdminDashboard'
+import ManageUsers from './pages/admin/ManageUsers'
+import ManageShops from './pages/admin/ManageShops'
+
+function NotFound() {
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-8">
-      <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
-      <p className="text-gray-500 mt-2">This page is coming soon.</p>
+    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
+      <h1 className="text-7xl font-bold text-orange-500">404</h1>
+      <h2 className="text-2xl font-bold text-gray-900 mt-4">Page Not Found</h2>
+      <p className="text-gray-500 mt-2">The page you are looking for does not exist.</p>
+      <a href="/" className="mt-6 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-semibold">
+        Back to Home
+      </a>
     </div>
   )
 }
@@ -43,16 +53,13 @@ export default function App() {
         <Toaster position="top-right" />
 
         <Routes>
-
           {/* Public Routes */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<ReviewFeed />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-
             <Route path="/shops" element={<Shops />} />
             <Route path="/shops/:id" element={<ShopDetails />} />
-
             <Route path="/events" element={<Events />} />
             <Route path="/events/:id" element={<EventDetails />} />
           </Route>
@@ -81,14 +88,8 @@ export default function App() {
             }
           >
             <Route path="/owner" element={<OwnerDashboard />} />
-            <Route
-              path="/owner/shop"
-              element={<Placeholder title="Manage Shop" />}
-            />
-            <Route
-              path="/owner/menu"
-              element={<Placeholder title="Manage Menu" />}
-            />
+            <Route path="/owner/shop" element={<ManageShop />} />
+            <Route path="/owner/menu" element={<ManageMenu />} />
           </Route>
 
           {/* Admin Routes */}
@@ -99,26 +100,13 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route
-              path="/admin"
-              element={<Placeholder title="Admin Dashboard" />}
-            />
-            <Route
-              path="/admin/users"
-              element={<Placeholder title="Manage Users" />}
-            />
-            <Route
-              path="/admin/shops"
-              element={<Placeholder title="Manage Shops" />}
-            />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<ManageUsers />} />
+            <Route path="/admin/shops" element={<ManageShops />} />
           </Route>
 
           {/* Not Found */}
-          <Route
-            path="*"
-            element={<Placeholder title="404 - Page Not Found" />}
-          />
-
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
