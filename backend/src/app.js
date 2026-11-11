@@ -11,6 +11,7 @@ const foodRoutes = require("./routes/foodRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const commentRoutes = require("./routes/commentRoutes");
 const ratingRoutes = require("./routes/ratingRoutes");
+const favoriteRoutes = require("./routes/favoriteRoutes");
 
 const app = express();
 
@@ -54,5 +55,6 @@ app.use("/api/food-items", foodRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/ratings", ratingRoutes);
+app.use("/api/favorites", favoriteRoutes);
 
 module.exports = app;
