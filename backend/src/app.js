@@ -12,6 +12,7 @@ const reviewRoutes = require("./routes/reviewRoutes");
 const commentRoutes = require("./routes/commentRoutes");
 const ratingRoutes = require("./routes/ratingRoutes");
 const favoriteRoutes = require("./routes/favoriteRoutes");
+const complaintRoutes = require("./routes/complaintRoutes");
 
 const app = express();
 
@@ -56,5 +57,6 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/ratings", ratingRoutes);
 app.use("/api/favorites", favoriteRoutes);
+app.use("/api/complaints", complaintRoutes);
 
 module.exports = app;
