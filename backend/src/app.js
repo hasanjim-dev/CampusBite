@@ -14,6 +14,7 @@ const ratingRoutes = require("./routes/ratingRoutes");
 const favoriteRoutes = require("./routes/favoriteRoutes");
 const complaintRoutes = require("./routes/complaintRoutes");
 const announcementRoutes = require("./routes/announcementRoutes");
+const eventRoutes = require("./routes/eventRoutes");
 
 const app = express();
 
@@ -61,5 +62,6 @@ app.use("/api/ratings", ratingRoutes);
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/complaints", complaintRoutes);
 app.use("/api/announcements", announcementRoutes);
+app.use("/api/events", eventRoutes);
 
 module.exports = app;
