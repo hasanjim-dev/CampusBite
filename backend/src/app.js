@@ -13,6 +13,7 @@ const commentRoutes = require("./routes/commentRoutes");
 const ratingRoutes = require("./routes/ratingRoutes");
 const favoriteRoutes = require("./routes/favoriteRoutes");
 const complaintRoutes = require("./routes/complaintRoutes");
+const announcementRoutes = require("./routes/announcementRoutes");
 
 const app = express();
 
@@ -52,11 +53,13 @@ app.use("/api/shops", shopRoutes);
 
 // Admin routes
 app.use("/api/admin", adminRoutes);
+
 app.use("/api/food-items", foodRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/ratings", ratingRoutes);
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/complaints", complaintRoutes);
+app.use("/api/announcements", announcementRoutes);
 
 module.exports = app;
