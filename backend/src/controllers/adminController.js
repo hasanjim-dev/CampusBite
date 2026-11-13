@@ -1,5 +1,6 @@
 
 const db = require("../config/db");
+const { notifyUsers } = require("../services/notificationService");
 
 // ==========================================
 // ADMIN: DEACTIVATE ANY SHOP
@@ -296,7 +297,128 @@ async function updateUserStatus(req, res) {
     });
   }
 }
+// ==========================================
+// ADMIN: UPDATE COMPLAINT STATUS
+// ==========================================
 
+async function updateComplaintStatus(req, res) {
+  try {
+    const complaintId = Number(req.params.id);
+    const { status, admin_note } = req.body;
+
+    if (!Number.isInteger(complaintId) || complaintId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid complaint ID."
+      });
+    }
+
+    const allowedStatuses = [
+      "pending",
+      "under_review",
+      "verified",
+      "rejected",
+      "resolved"
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid complaint status."
+      });
+    }
+
+    if (
+      admin_note !== undefined &&
+      admin_note !== null &&
+      (typeof admin_note !== "string" || admin_note.length > 65535)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid admin note."
+      });
+    }
+
+    // Find complaint
+    const [complaints] = await db.execute(
+      `SELECT id, user_id, status, admin_note
+       FROM complaints
+       WHERE id = ?
+       LIMIT 1`,
+      [complaintId]
+    );
+
+    if (complaints.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Complaint not found."
+      });
+    }
+
+    const complaint = complaints[0];
+    const statusChanged = complaint.status !== status;
+
+    const finalAdminNote =
+      admin_note === undefined
+        ? complaint.admin_note
+        : admin_note;
+
+    // Update complaint
+    await db.execute(
+      `UPDATE complaints
+       SET status = ?,
+           admin_note = ?,
+           handled_by = ?
+       WHERE id = ?`,
+      [
+        status,
+        finalAdminNote,
+        req.user.id,
+        complaintId
+      ]
+    );
+
+    // Notify complaint owner only when status changes
+    if (statusChanged) {
+      try {
+        await notifyUsers(
+          [complaint.user_id],
+          {
+            type: "complaint_update",
+            message: `Your complaint status has been updated to: ${status}.`,
+            relatedType: "complaint",
+            relatedId: complaintId
+          }
+        );
+      } catch (notificationError) {
+        console.error(
+          "Complaint status notification error:",
+          notificationError.message
+        );
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Complaint status updated successfully.",
+      complaint: {
+        id: complaintId,
+        user_id: complaint.user_id,
+        status,
+        admin_note: finalAdminNote,
+        handled_by: req.user.id
+      }
+    });
+
+  } catch (error) {
+    console.error("Update complaint status error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Could not update complaint status."
+    });
+  }
+}
 
 // ==========================================
 // EXPORT ALL ADMIN CONTROLLERS
@@ -307,5 +429,6 @@ module.exports = {
   activateShop,
   getAllUsers,
   getUserById,
-  updateUserStatus
+  updateUserStatus,
+  updateComplaintStatus
 };

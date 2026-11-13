@@ -1,5 +1,6 @@
 
 const pool = require("../config/db");
+const { notifyUsers } = require("../services/notificationService");
 
 // Helper: Build nested comment/reply structure
 function buildCommentTree(rows) {
@@ -139,8 +140,8 @@ async function createComment(req, res) {
     }
 
     const [reviews] = await pool.execute(
-      `SELECT id
-       FROM reviews
+      `SELECT id, user_id
+FROM reviews
        WHERE id = ? AND status = 'published'`,
       [reviewId]
     );
@@ -153,6 +154,7 @@ async function createComment(req, res) {
     }
 
     let parentId = null;
+    let parentOwnerId = null;
 
     if (
       parent_comment_id !== undefined &&
@@ -169,20 +171,22 @@ async function createComment(req, res) {
       }
 
       const [parents] = await pool.execute(
-        `SELECT id
-         FROM comments
+        `SELECT id, user_id
+FROM comments
          WHERE id = ?
            AND review_id = ?
            AND status = 'published'`,
         [parentId, reviewId]
       );
 
-      if (parents.length === 0) {
+           if (parents.length === 0) {
         return res.status(400).json({
           success: false,
           message: "Parent comment does not exist in this review."
         });
       }
+
+      parentOwnerId = parents[0].user_id;
     }
 
     const [result] = await pool.execute(
@@ -209,7 +213,32 @@ async function createComment(req, res) {
        WHERE c.id = ?`,
       [result.insertId]
     );
+// Notify the review owner or parent comment owner
+// Notify the review owner or parent comment owner
+const recipientId = parentId
+  ? parentOwnerId
+  : reviews[0].user_id;
 
+if (Number(recipientId) !== Number(req.user.id)) {
+  try {
+    await notifyUsers(
+      [recipientId],
+      {
+        type: "reply",
+        message: parentId
+          ? "Someone replied to your comment."
+          : "Someone commented on your review.",
+        relatedType: "comment",
+        relatedId: result.insertId
+      }
+    );
+  } catch (notificationError) {
+    console.error(
+      "Comment notification error:",
+      notificationError.message
+    );
+  }
+}
     return res.status(201).json({
       success: true,
       message: parentId

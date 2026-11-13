@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { notifyUsers } = require("../services/notificationService");
 
 // Validate positive integer IDs
 function isValidId(id) {
@@ -255,7 +256,30 @@ async function createEvent(req, res) {
         image_url
       ]
     );
+    // Notify all active students about the new event
+    try {
+      const [students] = await db.execute(
+        `SELECT id
+         FROM users
+         WHERE role = 'student'
+           AND status = 'active'`
+      );
 
+      await notifyUsers(
+        students.map((student) => student.id),
+        {
+          type: "new_event",
+          message: `New food event: ${name.trim()}`,
+          relatedType: "event",
+          relatedId: result.insertId
+        }
+      );
+    } catch (notificationError) {
+      console.error(
+        "Event notification error:",
+        notificationError.message
+      );
+    }
     return res.status(201).json({
       success: true,
       message: "Event created successfully.",
@@ -460,6 +484,8 @@ async function deleteEvent(req, res) {
 }
 
 // ADMIN: Add a shop to an event
+
+// ADMIN: Add a shop to an event
 async function addShopToEvent(req, res) {
   try {
     const { id } = req.params;
@@ -473,7 +499,7 @@ async function addShopToEvent(req, res) {
     }
 
     const [events] = await db.execute(
-      "SELECT id FROM events WHERE id = ? LIMIT 1",
+      "SELECT id, name FROM events WHERE id = ? LIMIT 1",
       [Number(id)]
     );
 
@@ -485,7 +511,10 @@ async function addShopToEvent(req, res) {
     }
 
     const [shops] = await db.execute(
-      "SELECT id FROM shops WHERE id = ? AND is_active = 1 LIMIT 1",
+      `SELECT id, owner_id
+       FROM shops
+       WHERE id = ? AND is_active = 1
+       LIMIT 1`,
       [Number(shop_id)]
     );
 
@@ -497,7 +526,9 @@ async function addShopToEvent(req, res) {
     }
 
     const [existing] = await db.execute(
-      "SELECT event_id FROM event_shops WHERE event_id = ? AND shop_id = ?",
+      `SELECT event_id
+       FROM event_shops
+       WHERE event_id = ? AND shop_id = ?`,
       [Number(id), Number(shop_id)]
     );
 
@@ -513,6 +544,21 @@ async function addShopToEvent(req, res) {
       [Number(id), Number(shop_id)]
     );
 
+    // Notify the participating shop owner
+    try {
+      await notifyUsers([shops[0].owner_id], {
+        type: "new_event",
+        message: `Your shop has been added to the event: ${events[0].name}`,
+        relatedType: "event",
+        relatedId: Number(id)
+      });
+    } catch (notificationError) {
+      console.error(
+        "Participating shop notification error:",
+        notificationError.message
+      );
+    }
+
     return res.status(201).json({
       success: true,
       message: "Shop added to event successfully."
@@ -526,6 +572,7 @@ async function addShopToEvent(req, res) {
     });
   }
 }
+
 
 // ADMIN: Add a food item to an event
 async function addFoodItemToEvent(req, res) {
