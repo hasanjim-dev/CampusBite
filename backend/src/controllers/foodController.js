@@ -1,5 +1,6 @@
 
 const pool = require("../config/db");
+const { notifyUsers } = require("../services/notificationService");
 
 // ADD FOOD ITEM
 async function createFoodItem(req, res) {
@@ -117,7 +118,33 @@ async function createFoodItem(req, res) {
         discount_percent
       ]
     );
+    // Notify active students who favorited this shop
+    try {
+      const [favorites] = await pool.execute(
+        `SELECT fs.user_id
+         FROM favorite_shops fs
+         INNER JOIN users u ON u.id = fs.user_id
+         WHERE fs.shop_id = ?
+           AND u.role = 'student'
+           AND u.status = 'active'`,
+        [shopId]
+      );
 
+      await notifyUsers(
+        favorites.map((favorite) => favorite.user_id),
+        {
+          type: "menu_change",
+          message: `New food item added to your favorite shop: ${cleanName}`,
+          relatedType: "food_item",
+          relatedId: result.insertId
+        }
+      );
+    } catch (notificationError) {
+      console.error(
+        "Food creation notification error:",
+        notificationError.message
+      );
+    }
     // Retrieve created food item
     const [foodItems] = await pool.execute(
       `SELECT
@@ -562,7 +589,51 @@ async function updateFoodItem(req, res) {
        WHERE id = ?`,
       values
     );
+    // Notify students who favorited this shop or food item
+    try {
+      const [favorites] = await pool.execute(
+        `SELECT user_id
+         FROM favorite_shops
+         WHERE shop_id = ?
 
+         UNION
+
+         SELECT user_id
+         FROM favorite_food_items
+         WHERE food_item_id = ?`,
+        [items[0].shop_id, foodId]
+      );
+
+      const favoriteUserIds = favorites.map(
+        (favorite) => favorite.user_id
+      );
+
+      if (favoriteUserIds.length > 0) {
+        const [activeStudents] = await pool.execute(
+          `SELECT id
+           FROM users
+           WHERE role = 'student'
+             AND status = 'active'
+             AND id IN (${favoriteUserIds.map(() => "?").join(",")})`,
+          favoriteUserIds
+        );
+
+        await notifyUsers(
+          activeStudents.map((student) => student.id),
+          {
+            type: "menu_change",
+            message: "A food item in your favorite shop has been updated.",
+            relatedType: "food_item",
+            relatedId: foodId
+          }
+        );
+      }
+    } catch (notificationError) {
+      console.error(
+        "Food update notification error:",
+        notificationError.message
+      );
+    }
     // Retrieve updated item
     const [updatedItems] = await pool.execute(
       `SELECT
@@ -613,9 +684,9 @@ async function deleteFoodItem(req, res) {
       });
     }
 
-    // Verify that the logged-in owner owns this food item
+    // Verify ownership
     const [items] = await pool.execute(
-      `SELECT f.id
+      `SELECT f.id, f.shop_id, f.name
        FROM food_items f
        INNER JOIN shops s ON f.shop_id = s.id
        WHERE f.id = ? AND s.owner_id = ?
@@ -630,10 +701,70 @@ async function deleteFoodItem(req, res) {
       });
     }
 
+    // Collect notification recipients before deletion
+    let notificationUserIds = [];
+
+    try {
+      const [favorites] = await pool.execute(
+        `SELECT user_id
+         FROM favorite_shops
+         WHERE shop_id = ?
+
+         UNION
+
+         SELECT user_id
+         FROM favorite_food_items
+         WHERE food_item_id = ?`,
+        [items[0].shop_id, foodId]
+      );
+
+      const favoriteUserIds = favorites.map(
+        (favorite) => favorite.user_id
+      );
+
+      if (favoriteUserIds.length > 0) {
+        const [activeStudents] = await pool.execute(
+          `SELECT id
+           FROM users
+           WHERE role = 'student'
+             AND status = 'active'
+             AND id IN (${favoriteUserIds.map(() => "?").join(",")})`,
+          favoriteUserIds
+        );
+
+        notificationUserIds = activeStudents.map(
+          (student) => student.id
+        );
+      }
+    } catch (notificationError) {
+      console.error(
+        "Food deletion recipient lookup error:",
+        notificationError.message
+      );
+    }
+
+    // Delete food item first
     await pool.execute(
       "DELETE FROM food_items WHERE id = ?",
       [foodId]
     );
+
+    // Notify students only after successful deletion
+    if (notificationUserIds.length > 0) {
+      try {
+        await notifyUsers(notificationUserIds, {
+          type: "menu_change",
+          message: `Food item "${items[0].name}" has been removed from the menu.`,
+          relatedType: "food_item",
+          relatedId: foodId
+        });
+      } catch (notificationError) {
+        console.error(
+          "Food deletion notification error:",
+          notificationError.message
+        );
+      }
+    }
 
     return res.status(200).json({
       success: true,

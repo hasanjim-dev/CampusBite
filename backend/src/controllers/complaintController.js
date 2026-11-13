@@ -1,5 +1,6 @@
 
 const pool = require("../config/db");
+const { notifyUsers } = require("../services/notificationService");
 const path = require("path");
 const fs = require("fs");
 
@@ -268,6 +269,30 @@ const [complaintResult] = await connection.execute(
 
     // Commit transaction
     await connection.commit();
+    // Best-effort admin notifications
+try {
+  const [admins] = await pool.execute(
+    `SELECT id
+     FROM users
+     WHERE role = 'admin'
+       AND status = 'active'`
+  );
+
+  await notifyUsers(
+    admins.map((admin) => admin.id),
+    {
+      type: "new_complaint",
+      message: "A new complaint has been submitted.",
+      relatedType: "complaint",
+      relatedId: complaintId
+    }
+  );
+} catch (notificationError) {
+  console.error(
+    "Complaint notification error:",
+    notificationError.message
+  );
+}
 
     return res.status(201).json({
       success: true,

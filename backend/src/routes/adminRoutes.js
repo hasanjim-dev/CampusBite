@@ -9,7 +9,8 @@ const {
   getUserById,
   updateUserStatus,
   deactivateShop,
-  activateShop
+  activateShop,
+  updateComplaintStatus
 } = require("../controllers/adminController");
 
 const router = express.Router();
@@ -42,7 +43,16 @@ router.patch(
   updateUserStatus
 );
 
+// ==========================================
+// ADMIN: COMPLAINT MANAGEMENT
+// ==========================================
 
+router.patch(
+  "/complaints/:id/status",
+  authMiddleware,
+  authorizeRoles("admin"),
+  updateComplaintStatus
+);
 // ==========================================
 // ADMIN: SHOP MANAGEMENT
 // ==========================================

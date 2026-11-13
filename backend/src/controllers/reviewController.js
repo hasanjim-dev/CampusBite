@@ -1,5 +1,6 @@
 
 const pool = require("../config/db");
+const { notifyUsers } = require("../services/notificationService");
 
 // ==========================================
 // HELPER: GET REVIEW WITH LIKE INFORMATION
@@ -133,6 +134,35 @@ async function createReview(req, res) {
         anonymous
       ]
     );
+        // Notify shop owner about the new review
+    try {
+      const [shops] = await pool.execute(
+        `SELECT owner_id
+         FROM shops
+         WHERE id = ?`,
+        [shopId]
+      );
+
+      if (
+        shops.length > 0 &&
+        Number(shops[0].owner_id) !== Number(req.user.id)
+      ) {
+        await notifyUsers(
+          [shops[0].owner_id],
+          {
+            type: "new_review",
+            message: "Someone has posted a new review on your shop.",
+            relatedType: "review",
+            relatedId: result.insertId
+          }
+        );
+      }
+    } catch (notificationError) {
+      console.error(
+        "Review notification error:",
+        notificationError.message
+      );
+    }
 
     const review = await getReviewDetails(result.insertId);
 
