@@ -1,5 +1,6 @@
 
 const pool = require("../config/db");
+const { notifyUsers } = require("../services/notificationService");
 
 // CREATE ANNOUNCEMENT - SHOP OWNER ONLY
 async function createAnnouncement(req, res) {
@@ -56,7 +57,33 @@ async function createAnnouncement(req, res) {
        VALUES (?, ?, ?, 1)`,
       [shopId, title.trim(), body.trim()]
     );
+    // Notify active students who favorited this shop
+    try {
+      const [favorites] = await pool.execute(
+        `SELECT fs.user_id
+         FROM favorite_shops fs
+         INNER JOIN users u ON u.id = fs.user_id
+         WHERE fs.shop_id = ?
+           AND u.role = 'student'
+           AND u.status = 'active'`,
+        [shopId]
+      );
 
+      await notifyUsers(
+        favorites.map((favorite) => favorite.user_id),
+        {
+          type: "announcement",
+          message: `New announcement from your favorite shop: ${title.trim()}`,
+          relatedType: "announcement",
+          relatedId: result.insertId
+        }
+      );
+    } catch (notificationError) {
+      console.error(
+        "Announcement notification error:",
+        notificationError.message
+      );
+    }
     // Retrieve created announcement
     const [announcements] = await pool.execute(
       `SELECT
