@@ -1,125 +1,211 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   User,
   Mail,
-  GraduationCap,
-  IdCard,
   Camera,
   Pencil,
   Save,
   X,
-  BookOpen,
   ArrowLeft,
+  LoaderCircle,
+  Lock,
+  ShieldCheck,
+  CalendarDays,
 } from 'lucide-react'
-
-const initialProfile = {
-  name: 'Hasan Jim',
-  email: 'hasan@example.com',
-  studentId: 'SE-2023-001',
-  department: 'Software Engineering',
-  university: 'Daffodil International University',
-  bio: 'Software Engineering student passionate about technology, web development and learning new skills.',
-  semester: '8th Semester',
-}
+import api from '../api/axios'
 
 export default function Profile() {
   const navigate = useNavigate()
 
-  const [profile, setProfile] = useState(initialProfile)
+  const [profile, setProfile] = useState({
+    id: '',
+    name: '',
+    email: '',
+    role: '',
+    status: '',
+    avatar_url: '',
+    created_at: '',
+  })
+
   const [editing, setEditing] = useState(false)
-  const [photo, setPhoto] = useState(
-    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300'
-  )
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+
+  useEffect(() => {
+    fetchProfile()
+  }, [])
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true)
+
+      const response = await api.get('/users/me')
+
+      const user = response.data.user
+
+      setProfile({
+        id: user.id,
+        name: user.name || '',
+        email: user.email || '',
+        role: user.role || '',
+        status: user.status || '',
+        avatar_url: user.avatar_url || '',
+        created_at: user.created_at || '',
+      })
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 'Failed to load profile.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleChange = (e) => {
-    setProfile({
-      ...profile,
+    setProfile((current) => ({
+      ...current,
       [e.target.name]: e.target.value,
-    })
+    }))
   }
 
-  const handlePhotoChange = (e) => {
-    const file = e.target.files?.[0]
-
-    if (!file) return
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file')
+  const handleSave = async () => {
+    if (!profile.name.trim()) {
+      toast.error('Name is required.')
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be less than 5MB')
-      return
+    try {
+      setSaving(true)
+
+      const response = await api.put('/users/me', {
+        name: profile.name.trim(),
+        avatar_url: profile.avatar_url.trim() || null,
+      })
+
+      const user = response.data.user
+
+      setProfile((current) => ({
+        ...current,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        avatar_url: user.avatar_url || '',
+      }))
+
+      setEditing(false)
+      toast.success('Profile updated successfully.')
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 'Failed to update profile.'
+      )
+    } finally {
+      setSaving(false)
     }
-
-    setPhoto(URL.createObjectURL(file))
-  }
-
-  const handleSave = () => {
-    if (!profile.name.trim() || !profile.email.trim()) {
-      toast.error('Name and email are required')
-      return
-    }
-
-    setEditing(false)
-    toast.success('Profile updated successfully! (Demo)')
   }
 
   const handleCancel = () => {
-    setProfile(initialProfile)
+    fetchProfile()
     setEditing(false)
-    setPhoto(
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300'
+  }
+
+  const handlePasswordChange = (e) => {
+    setPasswordForm((current) => ({
+      ...current,
+      [e.target.name]: e.target.value,
+    }))
+  }
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault()
+
+    if (
+      !passwordForm.currentPassword ||
+      !passwordForm.newPassword ||
+      !passwordForm.confirmPassword
+    ) {
+      toast.error('Please fill in all password fields.')
+      return
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      toast.error('New password must be at least 8 characters.')
+      return
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('New passwords do not match.')
+      return
+    }
+
+    try {
+      setChangingPassword(true)
+
+      const response = await api.put(
+        '/users/change-password',
+        passwordForm
+      )
+
+      toast.success(
+        response.data.message || 'Password changed successfully.'
+      )
+
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      })
+
+      setShowPasswordForm(false)
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 'Failed to change password.'
+      )
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
+  const formatDate = (date) => {
+    if (!date) return 'Not available'
+
+    const parsedDate = new Date(date)
+
+    if (Number.isNaN(parsedDate.getTime())) return 'Not available'
+
+    return parsedDate.toLocaleDateString('en-BD', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-96 flex-col items-center justify-center">
+        <LoaderCircle
+          size={40}
+          className="animate-spin text-orange-500"
+        />
+        <p className="mt-4 text-gray-500">Loading your profile...</p>
+      </div>
     )
   }
 
-  const fields = [
-    {
-      name: 'name',
-      label: 'Full Name',
-      icon: User,
-      placeholder: 'Enter your name',
-    },
-    {
-      name: 'email',
-      label: 'Email Address',
-      icon: Mail,
-      placeholder: 'Enter your email',
-    },
-    {
-      name: 'studentId',
-      label: 'Student ID',
-      icon: IdCard,
-      placeholder: 'Enter student ID',
-    },
-    {
-      name: 'department',
-      label: 'Department',
-      icon: GraduationCap,
-      placeholder: 'Enter department',
-    },
-    {
-      name: 'university',
-      label: 'University',
-      icon: BookOpen,
-      placeholder: 'Enter university',
-    },
-    {
-      name: 'semester',
-      label: 'Current Semester',
-      icon: GraduationCap,
-      placeholder: 'Enter semester',
-    },
-  ]
-
   return (
     <div className="mx-auto max-w-5xl">
-
-      {/* Back Button */}
       <button
         onClick={() => navigate(-1)}
         className="mb-6 flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
@@ -128,38 +214,33 @@ export default function Profile() {
         Back
       </button>
 
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">
           My Profile
         </h1>
         <p className="mt-2 text-gray-500">
-          View and manage your student profile information.
+          View and manage your CampusBite account information.
         </p>
       </div>
 
-      {/* Profile Card */}
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         <div className="h-36 bg-gradient-to-r from-orange-400 to-orange-600 sm:h-44" />
 
         <div className="px-6 pb-8 sm:px-9">
           <div className="-mt-16 flex flex-wrap items-end justify-between gap-5">
-            <div className="relative">
-              <img
-                src={photo}
-                alt="Profile"
-                className="h-32 w-32 rounded-full border-4 border-white bg-white object-cover shadow-sm"
-              />
-
-              <label className="absolute bottom-1 right-1 cursor-pointer rounded-full bg-orange-500 p-2 text-white shadow hover:bg-orange-600">
-                <Camera size={17} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  className="hidden"
+            <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-orange-100 shadow-sm">
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
                 />
-              </label>
+              ) : (
+                <User size={55} className="text-orange-400" />
+              )}
             </div>
 
             {!editing ? (
@@ -174,7 +255,8 @@ export default function Profile() {
               <div className="flex gap-2">
                 <button
                   onClick={handleCancel}
-                  className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 font-semibold text-gray-600 hover:bg-gray-50"
+                  disabled={saving}
+                  className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                 >
                   <X size={17} />
                   Cancel
@@ -182,9 +264,14 @@ export default function Profile() {
 
                 <button
                   onClick={handleSave}
-                  className="flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 font-semibold text-white hover:bg-orange-600"
+                  disabled={saving}
+                  className="flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
                 >
-                  <Save size={17} />
+                  {saving ? (
+                    <LoaderCircle size={17} className="animate-spin" />
+                  ) : (
+                    <Save size={17} />
+                  )}
                   Save
                 </button>
               </div>
@@ -197,79 +284,223 @@ export default function Profile() {
             </h2>
 
             <p className="mt-1 text-gray-500">
-              {profile.department} Student
+              {profile.role
+                ? profile.role.replace('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+                : 'CampusBite User'}
             </p>
 
-            <span className="mt-3 inline-block rounded-full bg-orange-100 px-4 py-1 text-sm font-semibold text-orange-600">
-              {profile.semester}
-            </span>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-4 py-1 text-sm font-semibold text-orange-600">
+                <ShieldCheck size={15} />
+                {profile.status}
+              </span>
+
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-4 py-1 text-sm text-gray-600">
+                <CalendarDays size={15} />
+                Joined {formatDate(profile.created_at)}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Profile Information */}
       <div className="mt-7 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
         <div className="mb-7">
           <h2 className="text-xl font-bold text-gray-900">
             Personal Information
           </h2>
           <p className="mt-1 text-sm text-gray-500">
-            Your basic student information.
+            Your account information.
           </p>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
-          {fields.map((field) => {
-            const Icon = field.icon
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-gray-700">
+              Full Name
+            </label>
 
-            return (
-              <div key={field.name}>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  {field.label}
-                </label>
+            <div className="relative">
+              <User
+                size={18}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              />
 
-                <div className="relative">
-                  <Icon
-                    size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
+              <input
+                type="text"
+                name="name"
+                value={profile.name}
+                onChange={handleChange}
+                disabled={!editing}
+                maxLength={100}
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-800 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 disabled:cursor-default"
+              />
+            </div>
+          </div>
 
-                  <input
-                    type="text"
-                    name={field.name}
-                    value={profile[field.name]}
-                    onChange={handleChange}
-                    disabled={!editing}
-                    placeholder={field.placeholder}
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-800 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 disabled:cursor-default"
-                  />
-                </div>
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-gray-700">
+              Email Address
+            </label>
+
+            <div className="relative">
+              <Mail
+                size={18}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+
+              <input
+                type="email"
+                value={profile.email}
+                disabled
+                className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-100 py-3 pl-10 pr-4 text-sm text-gray-500"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-400">
+              Email cannot be changed.
+            </p>
+          </div>
+
+          {editing && (
+            <div className="sm:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-gray-700">
+                Profile Image URL
+              </label>
+
+              <div className="relative">
+                <Camera
+                  size={18}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+
+                <input
+                  type="url"
+                  name="avatar_url"
+                  value={profile.avatar_url}
+                  onChange={handleChange}
+                  placeholder="https://example.com/profile.jpg"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-800 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                />
               </div>
-            )
-          })}
+              <p className="mt-1 text-xs text-gray-400">
+                Enter a publicly accessible image URL.
+              </p>
+            </div>
+          )}
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-gray-700">
+              Account ID
+            </label>
+
+            <input
+              type="text"
+              value={profile.id}
+              disabled
+              className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-gray-700">
+              Account Role
+            </label>
+
+            <input
+              type="text"
+              value={profile.role}
+              disabled
+              className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-7 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              Change Password
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Keep your account secure with a strong password.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowPasswordForm((current) => !current)}
+            className="flex items-center gap-2 rounded-lg border border-orange-500 px-4 py-2.5 text-sm font-semibold text-orange-600 hover:bg-orange-50"
+          >
+            <Lock size={17} />
+            {showPasswordForm ? 'Cancel' : 'Change Password'}
+          </button>
         </div>
 
-        {/* Bio */}
-        <div className="mt-7">
-          <label className="mb-2 block text-sm font-semibold text-gray-700">
-            About Me
-          </label>
+        {showPasswordForm && (
+          <form onSubmit={handleChangePassword} className="mt-6 space-y-5">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">
+                Current Password
+              </label>
+              <input
+                type="password"
+                name="currentPassword"
+                value={passwordForm.currentPassword}
+                onChange={handlePasswordChange}
+                autoComplete="current-password"
+                className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                required
+              />
+            </div>
 
-          <textarea
-            name="bio"
-            value={profile.bio}
-            onChange={handleChange}
-            disabled={!editing}
-            rows={4}
-            maxLength={300}
-            placeholder="Tell us about yourself..."
-            className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 disabled:cursor-default"
-          />
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">
+                New Password
+              </label>
+              <input
+                type="password"
+                name="newPassword"
+                value={passwordForm.newPassword}
+                onChange={handlePasswordChange}
+                autoComplete="new-password"
+                minLength={8}
+                className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                required
+              />
+            </div>
 
-          <p className="mt-1 text-right text-xs text-gray-400">
-            {profile.bio.length}/300 characters
-          </p>
-        </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={passwordForm.confirmPassword}
+                onChange={handlePasswordChange}
+                autoComplete="new-password"
+                minLength={8}
+                className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={changingPassword}
+              className="flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+            >
+              {changingPassword && (
+                <LoaderCircle size={17} className="animate-spin" />
+              )}
+              Update Password
+            </button>
+
+            <p className="text-xs text-gray-500">
+              After changing your password, the backend asks you to log in again.
+            </p>
+          </form>
+        )}
       </div>
     </div>
   )

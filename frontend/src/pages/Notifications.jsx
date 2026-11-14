@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Bell,
@@ -11,56 +11,18 @@ import {
   Trash2,
   ArrowLeft,
   Clock,
+  LoaderCircle,
+  MessageSquare,
 } from 'lucide-react'
-
-const initialNotifications = [
-  {
-    id: 1,
-    type: 'like',
-    title: 'New Like on Your Review',
-    message: 'Sakib Ahmed liked your review of Chicken Burger.',
-    time: '5 minutes ago',
-    read: false,
-  },
-  {
-    id: 2,
-    type: 'comment',
-    title: 'New Comment',
-    message: 'Nusrat Jahan commented on your food review.',
-    time: '30 minutes ago',
-    read: false,
-  },
-  {
-    id: 3,
-    type: 'shop',
-    title: 'Shop Update',
-    message: 'Food Court has updated its menu.',
-    time: '2 hours ago',
-    read: false,
-  },
-  {
-    id: 4,
-    type: 'event',
-    title: 'Upcoming Event',
-    message: 'Campus Food Festival is coming soon!',
-    time: 'Yesterday',
-    read: true,
-  },
-  {
-    id: 5,
-    type: 'like',
-    title: 'Review Appreciation',
-    message: 'Someone liked your review of Cold Coffee.',
-    time: '2 days ago',
-    read: true,
-  },
-]
+import toast from 'react-hot-toast'
+import api from '../api/axios'
 
 const notificationIcons = {
   like: Heart,
   comment: MessageCircle,
   shop: Store,
   event: CalendarDays,
+  review: MessageSquare,
 }
 
 const notificationColors = {
@@ -68,48 +30,181 @@ const notificationColors = {
   comment: 'bg-blue-100 text-blue-500',
   shop: 'bg-orange-100 text-orange-500',
   event: 'bg-purple-100 text-purple-500',
+  review: 'bg-green-100 text-green-500',
+}
+
+function formatTime(date) {
+  if (!date) return ''
+
+  const notificationDate = new Date(date)
+
+  if (Number.isNaN(notificationDate.getTime())) return ''
+
+  return notificationDate.toLocaleString('en-BD', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
 }
 
 export default function Notifications() {
   const navigate = useNavigate()
 
-  const [notifications, setNotifications] = useState(
-    initialNotifications
-  )
+  const [notifications, setNotifications] = useState([])
   const [activeTab, setActiveTab] = useState('all')
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [processing, setProcessing] = useState(null)
+  const [markingAll, setMarkingAll] = useState(false)
 
-  const unreadCount = notifications.filter(
-    (item) => !item.read
-  ).length
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true)
+
+      const [notificationsResponse, unreadResponse] = await Promise.all([
+        api.get('/notifications?page=1&limit=100'),
+        api.get('/notifications/unread-count'),
+      ])
+
+      const data = notificationsResponse.data.data || []
+
+      setNotifications(
+        data.map((item) => ({
+          ...item,
+          read: Boolean(item.is_read),
+          title: getNotificationTitle(item.type),
+          time: formatTime(item.created_at),
+        }))
+      )
+
+      setUnreadCount(
+        Number(unreadResponse.data.data?.unread_count || 0)
+      )
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 'Failed to load notifications.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getNotificationTitle = (type) => {
+    const titles = {
+      like: 'New Like on Your Review',
+      comment: 'New Comment',
+      shop: 'Shop Update',
+      event: 'Event Update',
+      review: 'Review Update',
+      announcement: 'New Announcement',
+    }
+
+    return titles[type] || 'CampusBite Notification'
+  }
+
+  const markAsRead = async (id) => {
+    try {
+      setProcessing(`read-${id}`)
+
+      await api.patch(`/notifications/${id}/read`)
+
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === id ? { ...item, read: true } : item
+        )
+      )
+
+      setUnreadCount((current) => Math.max(0, current - 1))
+      toast.success('Notification marked as read.')
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 'Failed to update notification.'
+      )
+    } finally {
+      setProcessing(null)
+    }
+  }
+
+  const markAllAsRead = async () => {
+    try {
+      setMarkingAll(true)
+
+      await api.patch('/notifications/read-all')
+
+      setNotifications((current) =>
+        current.map((item) => ({ ...item, read: true }))
+      )
+
+      setUnreadCount(0)
+      toast.success('All notifications marked as read.')
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 'Failed to update notifications.'
+      )
+    } finally {
+      setMarkingAll(false)
+    }
+  }
+
+  const deleteNotification = async (id) => {
+    const item = notifications.find(
+      (notification) => notification.id === id
+    )
+
+    try {
+      setProcessing(`delete-${id}`)
+
+      await api.delete(`/notifications/${id}`)
+
+      setNotifications((current) =>
+        current.filter((notification) => notification.id !== id)
+      )
+
+      if (item && !item.read) {
+        setUnreadCount((current) => Math.max(0, current - 1))
+      }
+
+      toast.success('Notification deleted.')
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 'Failed to delete notification.'
+      )
+    } finally {
+      setProcessing(null)
+    }
+  }
 
   const filteredNotifications = notifications.filter((item) => {
     if (activeTab === 'unread') return !item.read
     return true
   })
 
-  const markAsRead = (id) => {
-    setNotifications((current) =>
-      current.map((item) =>
-        item.id === id ? { ...item, read: true } : item
-      )
-    )
-  }
+  const handleNotificationClick = async (item) => {
+    if (!item.read) {
+      await markAsRead(item.id)
+    }
 
-  const markAllAsRead = () => {
-    setNotifications((current) =>
-      current.map((item) => ({ ...item, read: true }))
-    )
-  }
+    if (item.related_type && item.related_id) {
+      const routes = {
+        shop: `/shops/${item.related_id}`,
+        food: `/shops`,
+        food_item: `/shops`,
+        review: `/reviews`,
+        event: `/events/${item.related_id}`,
+        announcement: `/announcements`,
+      }
 
-  const deleteNotification = (id) => {
-    setNotifications((current) =>
-      current.filter((item) => item.id !== id)
-    )
+      const route = routes[item.related_type]
+
+      if (route) navigate(route)
+    }
   }
 
   return (
     <div className="mx-auto max-w-4xl">
-      {/* Header */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-orange-100 p-3">
@@ -133,7 +228,6 @@ export default function Notifications() {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2">
           <button
@@ -161,19 +255,37 @@ export default function Notifications() {
 
         <button
           onClick={markAllAsRead}
-          disabled={unreadCount === 0}
+          disabled={unreadCount === 0 || markingAll}
           className="flex items-center gap-2 text-sm font-semibold text-orange-600 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <CheckCheck size={18} />
+          {markingAll ? (
+            <LoaderCircle size={18} className="animate-spin" />
+          ) : (
+            <CheckCheck size={18} />
+          )}
           Mark all as read
         </button>
       </div>
 
-      {/* Notification List */}
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        {filteredNotifications.length > 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center py-16">
+            <LoaderCircle
+              size={38}
+              className="animate-spin text-orange-500"
+            />
+            <p className="mt-4 text-sm text-gray-500">
+              Loading notifications...
+            </p>
+          </div>
+        ) : filteredNotifications.length > 0 ? (
           filteredNotifications.map((item) => {
-            const Icon = notificationIcons[item.type]
+            const Icon =
+              notificationIcons[item.type] || Bell
+
+            const color =
+              notificationColors[item.type] ||
+              'bg-gray-100 text-gray-500'
 
             return (
               <div
@@ -183,24 +295,25 @@ export default function Notifications() {
                 }`}
               >
                 <div
-                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
-                    notificationColors[item.type]
-                  }`}
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${color}`}
                 >
                   <Icon size={22} />
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-900">
+                    <button
+                      onClick={() => handleNotificationClick(item)}
+                      className="flex items-center gap-2 text-left"
+                    >
+                      <h3 className="font-semibold text-gray-900 hover:text-orange-600">
                         {item.title}
                       </h3>
 
                       {!item.read && (
                         <span className="h-2 w-2 rounded-full bg-orange-500" />
                       )}
-                    </div>
+                    </button>
 
                     <span className="flex items-center gap-1 text-xs text-gray-400">
                       <Clock size={13} />
@@ -216,7 +329,8 @@ export default function Notifications() {
                     {!item.read && (
                       <button
                         onClick={() => markAsRead(item.id)}
-                        className="text-xs font-semibold text-orange-600 hover:text-orange-700"
+                        disabled={processing === `read-${item.id}`}
+                        className="text-xs font-semibold text-orange-600 hover:text-orange-700 disabled:opacity-50"
                       >
                         Mark as read
                       </button>
@@ -224,9 +338,17 @@ export default function Notifications() {
 
                     <button
                       onClick={() => deleteNotification(item.id)}
-                      className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-red-500"
+                      disabled={processing === `delete-${item.id}`}
+                      className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-red-500 disabled:opacity-50"
                     >
-                      <Trash2 size={13} />
+                      {processing === `delete-${item.id}` ? (
+                        <LoaderCircle
+                          size={13}
+                          className="animate-spin"
+                        />
+                      ) : (
+                        <Trash2 size={13} />
+                      )}
                       Delete
                     </button>
                   </div>

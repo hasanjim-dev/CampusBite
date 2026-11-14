@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Star,
@@ -17,129 +17,75 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-
 import { useAuth } from '../../context/AuthContext'
+import api from '../../api/axios'
 
-const initialReviews = [
-  {
-    id: 1,
-    name: 'Nusrat Jahan',
-    initials: 'NJ',
-    shop: 'Food Court',
-    food: 'Chicken Burger',
-    category: 'Food',
-    rating: 5,
-    time: '2 hours ago',
-    text: 'The burger was really delicious! The chicken was juicy and the price was reasonable. Definitely recommended.',
-    likes: 24,
-    color: 'bg-orange-100 text-orange-700',
-    edited: false,
-  },
-  {
-    id: 2,
-    name: 'Anonymous',
-    initials: 'A',
-    shop: 'Campus Cafe',
-    food: 'Cold Coffee',
-    category: 'Drinks',
-    rating: 4,
-    time: '5 hours ago',
-    text: 'Good coffee and a nice place to hang out with friends between classes. Could be a little less sweet.',
-    likes: 16,
-    color: 'bg-blue-100 text-blue-700',
-    edited: true,
-  },
-  {
-    id: 3,
-    name: 'Sakib Ahmed',
-    initials: 'SA',
-    shop: 'Snack Corner',
-    food: 'Chicken Sandwich',
-    category: 'Snacks',
-    rating: 4,
-    time: 'Yesterday',
-    text: 'Fresh and tasty sandwich. Service was quick too. A good option for a short break.',
-    likes: 12,
-    color: 'bg-green-100 text-green-700',
-    edited: false,
-  },
-]
+function formatTime(date) {
+  if (!date) return ''
 
-const initialComments = {
-  1: [
-    {
-      id: 101,
-      userId: 'demo-1',
-      name: 'Rahim Ahmed',
-      text: 'I tried this burger too. Really good!',
-      replies: [
-        {
-          id: 201,
-          userId: 'demo-2',
-          name: 'Nusrat Jahan',
-          text: 'Glad you liked it!',
-        },
-      ],
-    },
-    {
-      id: 102,
-      userId: 'demo-2',
-      name: 'Sadia Islam',
-      text: 'How much does it cost?',
-      replies: [],
-    },
-  ],
-  2: [
-    {
-      id: 103,
-      userId: 'demo-1',
-      name: 'Rahim Ahmed',
-      text: 'I prefer less sugar too.',
-      replies: [],
-    },
-  ],
-  3: [
-    {
-      id: 104,
-      userId: 'demo-3',
-      name: 'Tanvir Hasan',
-      text: 'Sounds delicious!',
-      replies: [],
-    },
-  ],
+  const value = new Date(date)
+  if (Number.isNaN(value.getTime())) return ''
+
+  const diff = Math.max(0, Date.now() - value.getTime())
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes} minutes ago`
+  if (hours < 24) return `${hours} hours ago`
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days} days ago`
+
+  return value.toLocaleDateString()
 }
 
-const categories = ['All Reviews', 'Food', 'Drinks', 'Snacks']
+function getInitials(name) {
+  if (!name || name === 'Anonymous') return 'A'
+
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('')
+}
 
 function CommentItem({
   comment,
   currentUserId,
+  onReply,
   onEdit,
   onDelete,
-  onReply,
-  onEditReply,
-  onDeleteReply,
+  onRequireLogin,
 }) {
   const [editing, setEditing] = useState(false)
-  const [editText, setEditText] = useState(comment.text)
+  const [editText, setEditText] = useState(comment.body)
   const [replying, setReplying] = useState(false)
   const [replyText, setReplyText] = useState('')
 
-  const isOwner = currentUserId === comment.userId
+  const isOwner =
+    currentUserId &&
+    Number(currentUserId) === Number(comment.user_id)
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editText.trim()) return
 
-    onEdit(comment.id, editText.trim())
+    await onEdit(comment.id, editText.trim())
     setEditing(false)
   }
 
-  const submitReply = (e) => {
-    e.preventDefault()
+  const submitReply = async (event) => {
+    event.preventDefault()
+
+    if (!currentUserId) {
+      onRequireLogin()
+      return
+    }
 
     if (!replyText.trim()) return
 
-    onReply(comment.id, replyText.trim())
+    await onReply(comment.id, replyText.trim())
     setReplyText('')
     setReplying(false)
   }
@@ -148,16 +94,21 @@ function CommentItem({
     <div className="border-l-2 border-gray-100 pl-4">
       <div className="rounded-xl bg-gray-50 p-3">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-semibold text-gray-800">
-            {comment.name}
-          </p>
+          <div>
+            <p className="text-sm font-semibold text-gray-800">
+              {comment.user_name}
+            </p>
+            {comment.is_edited === 1 && (
+              <span className="text-xs text-gray-400">Edited</span>
+            )}
+          </div>
 
-          {isOwner && (
+          {isOwner && comment.status === 'published' && (
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
-                  setEditText(comment.text)
+                  setEditText(comment.body)
                   setEditing(!editing)
                 }}
                 className="text-gray-400 hover:text-orange-600"
@@ -182,7 +133,7 @@ function CommentItem({
           <div className="mt-2 space-y-2">
             <textarea
               value={editText}
-              onChange={(e) => setEditText(e.target.value)}
+              onChange={(event) => setEditText(event.target.value)}
               rows={2}
               className="w-full rounded-lg border border-gray-200 bg-white p-2 text-sm outline-none focus:border-orange-400"
             />
@@ -207,31 +158,39 @@ function CommentItem({
           </div>
         ) : (
           <p className="mt-1 text-sm leading-6 text-gray-600">
-            {comment.text}
+            {comment.body}
           </p>
         )}
 
-        <button
-          type="button"
-          onClick={() => setReplying(!replying)}
-          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700"
-        >
-          <Reply size={13} />
-          Reply
-        </button>
+        {comment.status === 'published' && (
+          <button
+            type="button"
+            onClick={() => {
+              if (!currentUserId) {
+                onRequireLogin()
+                return
+              }
+              setReplying(!replying)
+            }}
+            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-orange-600"
+          >
+            <Reply size={13} />
+            Reply
+          </button>
+        )}
 
         {replying && (
           <form onSubmit={submitReply} className="mt-3 flex gap-2">
             <input
               value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
+              onChange={(event) => setReplyText(event.target.value)}
               placeholder="Write a reply..."
               className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
             />
 
             <button
               type="submit"
-              className="rounded-lg bg-orange-600 px-3 text-white hover:bg-orange-700"
+              className="rounded-lg bg-orange-600 px-3 text-white"
             >
               <Send size={15} />
             </button>
@@ -241,57 +200,17 @@ function CommentItem({
 
       {comment.replies?.length > 0 && (
         <div className="mt-3 space-y-3">
-          {comment.replies.map((reply) => {
-            const isReplyOwner = currentUserId === reply.userId
-
-            return (
-              <div
-                key={reply.id}
-                className="ml-3 rounded-xl bg-white p-3"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold text-gray-800">
-                    {reply.name}
-                  </p>
-
-                  {isReplyOwner && (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = window.prompt(
-                            'Edit your reply:',
-                            reply.text
-                          )
-
-                          if (updated?.trim()) {
-                            onEditReply(comment.id, reply.id, updated.trim())
-                          }
-                        }}
-                        className="text-gray-400 hover:text-orange-600"
-                        title="Edit reply"
-                      >
-                        <Pencil size={13} />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => onDeleteReply(comment.id, reply.id)}
-                        className="text-gray-400 hover:text-red-600"
-                        title="Delete reply"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <p className="mt-1 text-sm text-gray-600">
-                  {reply.text}
-                </p>
-              </div>
-            )
-          })}
+          {comment.replies.map((reply) => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              currentUserId={currentUserId}
+              onReply={onReply}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onRequireLogin={onRequireLogin}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -302,71 +221,82 @@ function ReviewCard({
   review,
   liked,
   comments,
+  commentsLoaded,
   currentUserId,
-  currentUserName,
   onLike,
+  onLoadComments,
   onAddComment,
   onEditComment,
   onDeleteComment,
-  onAddReply,
-  onEditReply,
-  onDeleteReply,
   onRequireLogin,
 }) {
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState('')
 
-  const submitComment = (e) => {
-    e.preventDefault()
+  const toggleComments = () => {
+    const next = !showComments
+    setShowComments(next)
 
-    if (!commentText.trim()) return
+    if (next && !commentsLoaded) {
+      onLoadComments(review.id)
+    }
+  }
+
+  const submitComment = async (event) => {
+    event.preventDefault()
 
     if (!currentUserId) {
       onRequireLogin()
       return
     }
 
-    onAddComment(review.id, commentText.trim())
+    if (!commentText.trim()) return
+
+    await onAddComment(review.id, commentText.trim())
     setCommentText('')
     setShowComments(true)
   }
+
+  const name = review.reviewer_name || 'Anonymous'
 
   return (
     <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-semibold ${review.color}`}>
-            {review.initials}
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-100 font-semibold text-orange-700">
+            {getInitials(name)}
           </div>
 
           <div>
-            <h3 className="font-semibold text-gray-900">
-              {review.name}
-            </h3>
+            <h3 className="font-semibold text-gray-900">{name}</h3>
 
             <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
               <Clock3 size={13} />
-              {review.time}
-              {review.edited && <span className="ml-1">· Edited</span>}
+              {formatTime(review.created_at)}
+              {review.is_edited === 1 && (
+                <span className="ml-1">· Edited</span>
+              )}
             </p>
           </div>
         </div>
 
-        <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700">
-          {review.category}
-        </span>
+        {review.is_anonymous === 1 && (
+          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
+            Anonymous
+          </span>
+        )}
       </div>
 
       <div className="mt-5 rounded-xl bg-gray-50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-sm font-semibold text-gray-900">
-              {review.food}
+              {review.food_item_name}
             </p>
 
             <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
               <MapPin size={13} />
-              {review.shop}
+              {review.shop_name}
             </p>
           </div>
 
@@ -376,7 +306,7 @@ function ReviewCard({
                 key={number}
                 size={15}
                 className={
-                  number <= review.rating
+                  number <= Number(review.rating)
                     ? 'fill-amber-400 text-amber-400'
                     : 'text-gray-300'
                 }
@@ -384,15 +314,26 @@ function ReviewCard({
             ))}
 
             <span className="ml-1 text-sm font-semibold text-gray-700">
-              {review.rating}.0
+              {Number(review.rating).toFixed(1)}
             </span>
           </div>
         </div>
       </div>
 
-      <p className="mt-4 text-sm leading-7 text-gray-600">
-        {review.text}
+      <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-gray-600">
+        {review.body}
       </p>
+
+      {review.image_url && (
+        <img
+          src={review.image_url}
+          alt="Review"
+          className="mt-4 max-h-72 w-full rounded-xl object-cover"
+          onError={(event) => {
+            event.currentTarget.style.display = 'none'
+          }}
+        />
+      )}
 
       <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
         <button
@@ -403,16 +344,16 @@ function ReviewCard({
           }`}
         >
           <Heart size={18} className={liked ? 'fill-current' : ''} />
-          {review.likes + (liked ? 1 : 0)} Likes
+          {Number(review.like_count || 0)} Likes
         </button>
 
         <button
           type="button"
-          onClick={() => setShowComments(!showComments)}
-          className="flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-orange-600"
+          onClick={toggleComments}
+          className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-orange-600"
         >
           <MessageCircle size={18} />
-          {comments.length} Comments
+          Comments
         </button>
       </div>
 
@@ -420,14 +361,13 @@ function ReviewCard({
         <div className="mt-5 border-t border-gray-100 pt-5">
           <div className="mb-4 flex items-center justify-between">
             <h4 className="font-semibold text-gray-900">
-              Comments ({comments.length})
+              Comments
             </h4>
 
             <button
               type="button"
               onClick={() => setShowComments(false)}
               className="text-gray-400 hover:text-gray-700"
-              title="Close comments"
             >
               <X size={18} />
             </button>
@@ -436,42 +376,37 @@ function ReviewCard({
           <form onSubmit={submitComment} className="mb-5 flex gap-2">
             <input
               value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
+              onChange={(event) => setCommentText(event.target.value)}
               placeholder="Write a comment..."
-              className="min-w-0 flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+              className="min-w-0 flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-orange-400"
             />
 
             <button
               type="submit"
-              className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 text-sm font-medium text-white transition hover:bg-orange-700"
+              className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 text-sm font-medium text-white hover:bg-orange-700"
             >
               <Send size={16} />
               <span className="hidden sm:inline">Send</span>
             </button>
           </form>
 
-          {comments.length > 0 ? (
+          {!commentsLoaded ? (
+            <p className="py-5 text-center text-sm text-gray-400">
+              Loading comments...
+            </p>
+          ) : comments.length > 0 ? (
             <div className="space-y-4">
               {comments.map((comment) => (
                 <CommentItem
                   key={comment.id}
                   comment={comment}
                   currentUserId={currentUserId}
-                  onEdit={(commentId, text) =>
-                    onEditComment(review.id, commentId, text)
+                  onReply={(parentId, body) =>
+                    onAddComment(review.id, body, parentId)
                   }
-                  onDelete={(commentId) =>
-                    onDeleteComment(review.id, commentId)
-                  }
-                  onReply={(commentId, text) =>
-                    onAddReply(review.id, commentId, text)
-                  }
-                  onEditReply={(commentId, replyId, text) =>
-                    onEditReply(review.id, commentId, replyId, text)
-                  }
-                  onDeleteReply={(commentId, replyId) =>
-                    onDeleteReply(review.id, commentId, replyId)
-                  }
+                  onEdit={onEditComment}
+                  onDelete={onDeleteComment}
+                  onRequireLogin={onRequireLogin}
                 />
               ))}
             </div>
@@ -490,164 +425,244 @@ export default function ReviewFeed() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [reviews] = useState(initialReviews)
-  const [comments, setComments] = useState(initialComments)
-  const [likedReviews, setLikedReviews] = useState([])
-  const [activeCategory, setActiveCategory] = useState('All Reviews')
+  const [reviews, setReviews] = useState([])
+  const [likedReviews, setLikedReviews] = useState({})
+  const [comments, setComments] = useState({})
+  const [loadedComments, setLoadedComments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
 
-  const currentUserId = user
-    ? String(user.id || user.email || user.name)
-    : null
+  const currentUserId = user?.id || null
 
-  const currentUserName = user?.name || 'CampusBite User'
+  useEffect(() => {
+    let active = true
 
-  const filteredReviews = reviews.filter((review) => {
-    const matchesCategory =
-      activeCategory === 'All Reviews' ||
-      review.category === activeCategory
+    const fetchReviews = async () => {
+      try {
+        setLoading(true)
+        setError('')
 
-    const searchText = search.toLowerCase().trim()
+        const response = await api.get('/reviews', {
+          params: {
+            page: 1,
+            limit: 50,
+            ...(search.trim() ? { search: search.trim() } : {}),
+          },
+        })
 
-    const matchesSearch =
-      review.food.toLowerCase().includes(searchText) ||
-      review.shop.toLowerCase().includes(searchText) ||
-      review.text.toLowerCase().includes(searchText) ||
-      review.name.toLowerCase().includes(searchText)
+        if (!active) return
 
-    return matchesCategory && matchesSearch
-  })
+        const reviewList = response.data.reviews || []
+        setReviews(reviewList)
 
-  const handleLike = (reviewId) => {
-    if (!user) {
+        if (currentUserId) {
+          const reactionResults = await Promise.all(
+            reviewList.map(async (review) => {
+              try {
+                const result = await api.get(
+                  `/reviews/${review.id}/reaction`
+                )
+
+                return [
+                  review.id,
+                  {
+                    liked: result.data.is_liked,
+                    count: Number(result.data.like_count || 0),
+                  },
+                ]
+              } catch {
+                return [
+                  review.id,
+                  {
+                    liked: false,
+                    count: Number(review.like_count || 0),
+                  },
+                ]
+              }
+            })
+          )
+
+          if (active) {
+            setLikedReviews(Object.fromEntries(
+              reactionResults.map(([id, data]) => [id, data.liked])
+            ))
+
+            setReviews((previous) =>
+              previous.map((review) => {
+                const reaction = Object.fromEntries(reactionResults)[review.id]
+                return reaction
+                  ? { ...review, like_count: reaction.count }
+                  : review
+              })
+            )
+          }
+        } else {
+          setLikedReviews({})
+        }
+      } catch (err) {
+        if (active) {
+          setError(
+            err.response?.data?.message ||
+            'Failed to load reviews. Please try again.'
+          )
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    fetchReviews()
+
+    return () => {
+      active = false
+    }
+  }, [search, currentUserId])
+
+  const handleLike = async (reviewId) => {
+    if (!currentUserId) {
       navigate('/login')
       return
     }
 
-    setLikedReviews((previous) =>
-      previous.includes(reviewId)
-        ? previous.filter((id) => id !== reviewId)
-        : [...previous, reviewId]
-    )
+    try {
+      const response = await api.post(`/reviews/${reviewId}/reaction`)
+
+      setLikedReviews((previous) => ({
+        ...previous,
+        [reviewId]: response.data.is_liked,
+      }))
+
+      setReviews((previous) =>
+        previous.map((review) =>
+          review.id === reviewId
+            ? { ...review, like_count: response.data.like_count }
+            : review
+        )
+      )
+    } catch (err) {
+      window.alert(
+        err.response?.data?.message || 'Could not update like.'
+      )
+    }
+  }
+
+  const loadComments = async (reviewId) => {
+    try {
+      const response = await api.get(
+        `/comments/review/${reviewId}`
+      )
+
+      setComments((previous) => ({
+        ...previous,
+        [reviewId]: response.data.comments || [],
+      }))
+
+      setLoadedComments((previous) =>
+        previous.includes(reviewId)
+          ? previous
+          : [...previous, reviewId]
+      )
+    } catch (err) {
+      window.alert(
+        err.response?.data?.message || 'Could not load comments.'
+      )
+      setLoadedComments((previous) => [...previous, reviewId])
+    }
+  }
+
+  const handleAddComment = async (reviewId, body, parentId = null) => {
+    if (!currentUserId) {
+      navigate('/login')
+      return
+    }
+
+    try {
+      await api.post('/comments', {
+        review_id: reviewId,
+        parent_comment_id: parentId,
+        body,
+      })
+
+      await loadComments(reviewId)
+    } catch (err) {
+      window.alert(
+        err.response?.data?.message || 'Could not add comment.'
+      )
+    }
+  }
+
+  const handleEditComment = async (commentId, body) => {
+    try {
+      await api.put(`/comments/${commentId}`, { body })
+
+      setComments((previous) => {
+        const updateTree = (items) =>
+          items.map((item) => ({
+            ...item,
+            body: item.id === commentId ? body : item.body,
+            is_edited: item.id === commentId ? 1 : item.is_edited,
+            replies: updateTree(item.replies || []),
+          }))
+
+        return Object.fromEntries(
+          Object.entries(previous).map(([reviewId, items]) => [
+            reviewId,
+            updateTree(items),
+          ])
+        )
+      })
+    } catch (err) {
+      window.alert(
+        err.response?.data?.message || 'Could not edit comment.'
+      )
+    }
+  }
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) {
+      return
+    }
+
+    try {
+      await api.delete(`/comments/${commentId}`)
+
+      setComments((previous) => {
+        const updateTree = (items) =>
+          items.map((item) => ({
+            ...item,
+            body:
+              item.id === commentId
+                ? 'This comment was deleted.'
+                : item.body,
+            status:
+              item.id === commentId
+                ? 'removed'
+                : item.status,
+            replies: updateTree(item.replies || []),
+          }))
+
+        return Object.fromEntries(
+          Object.entries(previous).map(([reviewId, items]) => [
+            reviewId,
+            updateTree(items),
+          ])
+        )
+      })
+    } catch (err) {
+      window.alert(
+        err.response?.data?.message || 'Could not delete comment.'
+      )
+    }
   }
 
   const handleCreateReview = () => {
-    if (!user) {
+    if (!currentUserId) {
       navigate('/login')
       return
     }
 
     navigate('/reviews/new')
-  }
-
-  const handleAddComment = (reviewId, text) => {
-    if (!user) {
-      navigate('/login')
-      return
-    }
-
-    const newComment = {
-      id: Date.now(),
-      userId: currentUserId,
-      name: currentUserName,
-      text,
-      replies: [],
-    }
-
-    setComments((previous) => ({
-      ...previous,
-      [reviewId]: [...(previous[reviewId] || []), newComment],
-    }))
-  }
-
-  const handleEditComment = (reviewId, commentId, text) => {
-    setComments((previous) => ({
-      ...previous,
-      [reviewId]: previous[reviewId].map((comment) =>
-        comment.id === commentId && comment.userId === currentUserId
-          ? { ...comment, text }
-          : comment
-      ),
-    }))
-  }
-
-  const handleDeleteComment = (reviewId, commentId) => {
-    if (!window.confirm('Are you sure you want to delete this comment?')) {
-      return
-    }
-
-    setComments((previous) => ({
-      ...previous,
-      [reviewId]: previous[reviewId].filter(
-        (comment) =>
-          !(comment.id === commentId && comment.userId === currentUserId)
-      ),
-    }))
-  }
-
-  const handleAddReply = (reviewId, commentId, text) => {
-    if (!user) {
-      navigate('/login')
-      return
-    }
-
-    const newReply = {
-      id: Date.now(),
-      userId: currentUserId,
-      name: currentUserName,
-      text,
-    }
-
-    setComments((previous) => ({
-      ...previous,
-      [reviewId]: previous[reviewId].map((comment) =>
-        comment.id === commentId
-          ? {
-              ...comment,
-              replies: [...(comment.replies || []), newReply],
-            }
-          : comment
-      ),
-    }))
-  }
-
-  const handleEditReply = (reviewId, commentId, replyId, text) => {
-    setComments((previous) => ({
-      ...previous,
-      [reviewId]: previous[reviewId].map((comment) =>
-        comment.id === commentId
-          ? {
-              ...comment,
-              replies: comment.replies.map((reply) =>
-                reply.id === replyId && reply.userId === currentUserId
-                  ? { ...reply, text }
-                  : reply
-              ),
-            }
-          : comment
-      ),
-    }))
-  }
-
-  const handleDeleteReply = (reviewId, commentId, replyId) => {
-    if (!window.confirm('Are you sure you want to delete this reply?')) {
-      return
-    }
-
-    setComments((previous) => ({
-      ...previous,
-      [reviewId]: previous[reviewId].map((comment) =>
-        comment.id === commentId
-          ? {
-              ...comment,
-              replies: comment.replies.filter(
-                (reply) =>
-                  !(reply.id === replyId && reply.userId === currentUserId)
-              ),
-            }
-          : comment
-      ),
-    }))
   }
 
   return (
@@ -673,7 +688,7 @@ export default function ReviewFeed() {
           <button
             type="button"
             onClick={handleCreateReview}
-            className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-orange-700 shadow-sm transition hover:bg-orange-50"
+            className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-orange-700 shadow-sm hover:bg-orange-50"
           >
             <Plus size={18} />
             Write a Review
@@ -711,59 +726,53 @@ export default function ReviewFeed() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search food or shop..."
-              className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+              className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-orange-400"
             />
           </div>
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <button
-              key={category}
-              type="button"
-              onClick={() => setActiveCategory(category)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                activeCategory === category
-                  ? 'bg-orange-600 text-white shadow-sm'
-                  : 'border border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-600'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
         </div>
       </section>
 
       <section className="space-y-5">
-        {filteredReviews.length > 0 ? (
-          filteredReviews.map((review) => (
+        {loading ? (
+          <div className="rounded-2xl border bg-white px-5 py-12 text-center text-sm text-gray-500">
+            Loading reviews...
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-10 text-center">
+            <p className="text-sm text-red-600">{error}</p>
+            <button
+              type="button"
+              onClick={() => setSearch((value) => value)}
+              className="mt-3 text-sm font-semibold text-orange-600"
+            >
+              Try again
+            </button>
+          </div>
+        ) : reviews.length > 0 ? (
+          reviews.map((review) => (
             <ReviewCard
               key={review.id}
               review={review}
-              liked={likedReviews.includes(review.id)}
+              liked={Boolean(likedReviews[review.id])}
               comments={comments[review.id] || []}
+              commentsLoaded={loadedComments.includes(review.id)}
               currentUserId={currentUserId}
-              currentUserName={currentUserName}
               onLike={() => handleLike(review.id)}
+              onLoadComments={loadComments}
               onAddComment={handleAddComment}
               onEditComment={handleEditComment}
               onDeleteComment={handleDeleteComment}
-              onAddReply={handleAddReply}
-              onEditReply={handleEditReply}
-              onDeleteReply={handleDeleteReply}
               onRequireLogin={() => navigate('/login')}
             />
           ))
         ) : (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-5 py-12 text-center">
             <Search size={30} className="mx-auto text-gray-300" />
-
             <h3 className="mt-3 font-semibold text-gray-800">
               No reviews found
             </h3>
-
             <p className="mt-1 text-sm text-gray-500">
-              Try another search or category.
+              Try another search or be the first to write a review.
             </p>
           </div>
         )}
@@ -774,7 +783,6 @@ export default function ReviewFeed() {
           <h3 className="text-lg font-bold text-gray-900">
             Tried something delicious?
           </h3>
-
           <p className="mt-1 text-sm text-gray-600">
             Help other students discover great campus food.
           </p>
@@ -783,7 +791,7 @@ export default function ReviewFeed() {
         <button
           type="button"
           onClick={handleCreateReview}
-          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-700"
+          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-700"
         >
           Share Your Review
           <ArrowRight size={17} />

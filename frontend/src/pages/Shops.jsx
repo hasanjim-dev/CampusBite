@@ -1,144 +1,62 @@
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Search,
   MapPin,
-  Star,
   ArrowUpRight,
   SlidersHorizontal,
   UtensilsCrossed,
-  Coffee,
-  Pizza,
-  IceCream,
+  Clock,
   X,
+  Store,
+  RefreshCw,
 } from 'lucide-react'
-
-const shops = [
-  {
-    id: 1,
-    name: 'Campus Food Court',
-    category: 'Food',
-    description: 'Delicious meals and fresh food for campus students.',
-    location: 'Main Campus',
-    rating: 4.8,
-    reviews: 124,
-    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800',
-    featured: true,
-  },
-  {
-    id: 2,
-    name: 'Campus Cafe',
-    category: 'Drinks',
-    description: 'Enjoy coffee, cold drinks and a relaxing atmosphere.',
-    location: 'Academic Building',
-    rating: 4.6,
-    reviews: 89,
-    image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
-    featured: false,
-  },
-  {
-    id: 3,
-    name: 'Snack Corner',
-    category: 'Snacks',
-    description: 'Tasty snacks, sandwiches and quick bites.',
-    location: 'University Gate',
-    rating: 4.5,
-    reviews: 67,
-    image: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=800',
-    featured: false,
-  },
-  {
-    id: 4,
-    name: 'Pizza Station',
-    category: 'Food',
-    description: 'Freshly baked pizza with delicious toppings.',
-    location: 'Food Zone',
-    rating: 4.7,
-    reviews: 102,
-    image: 'https://images.unsplash.com/photo-1579751626657-72bc17010498?w=800',
-    featured: true,
-  },
-  {
-    id: 5,
-    name: 'Sweet Treats',
-    category: 'Desserts',
-    description: 'Cakes, ice cream and sweet treats for everyone.',
-    location: 'Main Campus',
-    rating: 4.4,
-    reviews: 53,
-    image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=800',
-    featured: false,
-  },
-  {
-    id: 6,
-    name: 'Coffee House',
-    category: 'Drinks',
-    description: 'Premium coffee and refreshing beverages.',
-    location: 'Library Road',
-    rating: 4.9,
-    reviews: 145,
-    image: 'https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=800',
-    featured: true,
-  },
-]
-
-const categories = [
-  { name: 'All', icon: SlidersHorizontal },
-  { name: 'Food', icon: UtensilsCrossed },
-  { name: 'Drinks', icon: Coffee },
-  { name: 'Snacks', icon: Pizza },
-  { name: 'Desserts', icon: IceCream },
-]
+import api from '../api/axios'
 
 function ShopCard({ shop }) {
+  const navigate = useNavigate()
+
   return (
     <article className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
-      <div className="relative h-52 overflow-hidden">
-        <img
-          src={shop.image}
-          alt={shop.name}
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-        />
-
-        {shop.featured && (
-          <span className="absolute left-4 top-4 rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white">
-            Featured
-          </span>
+      <div className="relative flex h-52 items-center justify-center overflow-hidden bg-gradient-to-br from-orange-100 to-orange-50">
+        {shop.logo_url ? (
+          <img
+            src={shop.logo_url}
+            alt={shop.name}
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <Store size={64} className="text-orange-300" />
         )}
 
         <span className="absolute bottom-4 right-4 rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700 shadow">
-          {shop.category}
+          Campus Shop
         </span>
       </div>
 
       <div className="p-5">
-        <div className="mb-2 flex items-start justify-between gap-3">
-          <h3 className="text-lg font-bold text-gray-900">
-            {shop.name}
-          </h3>
-
-          <div className="flex shrink-0 items-center gap-1 text-sm font-semibold text-gray-800">
-            <Star size={15} className="fill-yellow-400 text-yellow-400" />
-            {shop.rating}
-          </div>
-        </div>
+        <h3 className="mb-2 text-lg font-bold text-gray-900">
+          {shop.name}
+        </h3>
 
         <p className="mb-4 min-h-10 text-sm leading-5 text-gray-500">
-          {shop.description}
+          {shop.description || 'Discover this campus shop on CampusBite.'}
         </p>
 
-        <div className="mb-5 flex items-center justify-between text-xs text-gray-500">
-          <span className="flex items-center gap-1">
-            <MapPin size={14} />
-            {shop.location}
-          </span>
+        <div className="mb-3 flex items-center gap-2 text-xs text-gray-500">
+          <MapPin size={14} className="shrink-0" />
+          <span>{shop.location || 'Location not provided'}</span>
+        </div>
 
-          <span>{shop.reviews} reviews</span>
+        <div className="mb-5 flex items-center gap-2 text-xs text-gray-500">
+          <Clock size={14} className="shrink-0" />
+          <span>{shop.opening_hours || 'Opening hours not provided'}</span>
         </div>
 
         <button
           type="button"
-          onClick={() => window.location.href = `/shops/${shop.id}`}
+          onClick={() => navigate(`/shops/${shop.id}`)}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-orange-500 py-2.5 text-sm font-semibold text-orange-600 transition hover:bg-orange-500 hover:text-white"
         >
           View Details
@@ -150,25 +68,51 @@ function ShopCard({ shop }) {
 }
 
 export default function Shops() {
+  const [shops, setShops] = useState([])
   const [search, setSearch] = useState('')
-  const [activeCategory, setActiveCategory] = useState('All')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const fetchShops = async () => {
+      try {
+        setLoading(true)
+        setError('')
+
+        const response = await api.get('/shops')
+
+        if (response.data.success) {
+          setShops(response.data.shops || [])
+        } else {
+          setError(response.data.message || 'Failed to load shops.')
+        }
+      } catch (err) {
+        setError(
+          err.response?.data?.message ||
+          'Unable to load shops. Please check your connection.'
+        )
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchShops()
+  }, [])
 
   const filteredShops = useMemo(() => {
+    const keyword = search.toLowerCase().trim()
+
     return shops.filter((shop) => {
-      const matchesCategory =
-        activeCategory === 'All' || shop.category === activeCategory
-
-      const matchesSearch =
-        shop.name.toLowerCase().includes(search.toLowerCase()) ||
-        shop.description.toLowerCase().includes(search.toLowerCase())
-
-      return matchesCategory && matchesSearch
+      return (
+        shop.name?.toLowerCase().includes(keyword) ||
+        shop.description?.toLowerCase().includes(keyword) ||
+        shop.location?.toLowerCase().includes(keyword)
+      )
     })
-  }, [search, activeCategory])
+  }, [shops, search])
 
   return (
     <div className="pb-12">
-      {/* Hero Section */}
       <section className="relative mb-10 overflow-hidden rounded-3xl bg-gray-900 px-6 py-14 text-white sm:px-12 sm:py-20">
         <div className="absolute inset-0 bg-gradient-to-r from-gray-950 via-gray-900/95 to-orange-950/70" />
 
@@ -183,7 +127,7 @@ export default function Shops() {
           </h1>
 
           <p className="mb-7 max-w-lg text-sm leading-6 text-gray-300 sm:text-base">
-            Find your favorite campus food spots, explore menus and discover
+            Find your favorite campus food spots, explore shops and discover
             places recommended by students.
           </p>
 
@@ -194,60 +138,33 @@ export default function Shops() {
         </div>
       </section>
 
-      {/* Search and Categories */}
       <section className="mb-8">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row">
-          <div className="relative flex-1">
-            <Search
-              size={20}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-            />
+        <div className="relative">
+          <Search
+            size={20}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+          />
 
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search shops or food places..."
-              className="w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-12 pr-11 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
-            />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search shops or locations..."
+            className="w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-12 pr-11 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+          />
 
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
-              >
-                <X size={17} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => {
-            const Icon = category.icon
-            const active = activeCategory === category.name
-
-            return (
-              <button
-                key={category.name}
-                type="button"
-                onClick={() => setActiveCategory(category.name)}
-                className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition ${
-                  active
-                    ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
-                    : 'border border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-600'
-                }`}
-              >
-                <Icon size={16} />
-                {category.name}
-              </button>
-            )
-          })}
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+            >
+              <X size={17} />
+            </button>
+          )}
         </div>
       </section>
 
-      {/* Shop List */}
       <section>
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -259,12 +176,30 @@ export default function Shops() {
             </p>
           </div>
 
-          <span className="rounded-full bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-600">
-            {filteredShops.length} Shops
-          </span>
+          {!loading && !error && (
+            <span className="rounded-full bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-600">
+              {filteredShops.length} Shops
+            </span>
+          )}
         </div>
 
-        {filteredShops.length > 0 ? (
+        {loading ? (
+          <div className="rounded-2xl border border-gray-100 bg-white py-16 text-center">
+            <RefreshCw size={32} className="mx-auto mb-3 animate-spin text-orange-500" />
+            <p className="text-sm text-gray-500">Loading shops...</p>
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl border border-red-100 bg-white py-16 text-center">
+            <p className="text-sm text-red-600">{error}</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-4 font-semibold text-orange-600 hover:underline"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : filteredShops.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredShops.map((shop) => (
               <ShopCard key={shop.id} shop={shop} />
@@ -272,24 +207,27 @@ export default function Shops() {
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center">
-            <Search size={36} className="mx-auto mb-3 text-gray-300" />
+            <SlidersHorizontal size={36} className="mx-auto mb-3 text-gray-300" />
+
             <h3 className="text-lg font-bold text-gray-800">
-              No shops found
+              {shops.length === 0 ? 'No shops available' : 'No shops found'}
             </h3>
+
             <p className="mt-2 text-sm text-gray-500">
-              Try another search or category.
+              {shops.length === 0
+                ? 'There are currently no active shops.'
+                : 'Try another search keyword.'}
             </p>
 
-            <button
-              type="button"
-              onClick={() => {
-                setSearch('')
-                setActiveCategory('All')
-              }}
-              className="mt-4 font-semibold text-orange-600 hover:underline"
-            >
-              Clear Filters
-            </button>
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="mt-4 font-semibold text-orange-600 hover:underline"
+              >
+                Clear Search
+              </button>
+            )}
           </div>
         )}
       </section>
