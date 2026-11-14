@@ -1,72 +1,86 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft,
   Star,
-  Upload,
-  X,
   Send,
+  LoaderCircle,
+  MessageCircle
 } from 'lucide-react'
-
-const shops = [
-  {
-    id: '1',
-    name: 'Food Court',
-    foods: ['Chicken Burger', 'Beef Burger', 'French Fries', 'Pizza'],
-  },
-  {
-    id: '2',
-    name: 'Campus Cafe',
-    foods: ['Cold Coffee', 'Hot Coffee', 'Sandwich', 'Pasta'],
-  },
-  {
-    id: '3',
-    name: 'Snack Corner',
-    foods: ['Chicken Sandwich', 'Samosa', 'Spring Roll', 'Noodles'],
-  },
-]
+import api from '../api/axios'
 
 export default function CreateReview() {
   const navigate = useNavigate()
 
+  const [shops, setShops] = useState([])
+  const [foods, setFoods] = useState([])
   const [shop, setShop] = useState('')
   const [food, setFood] = useState('')
   const [rating, setRating] = useState(0)
   const [hoverRating, setHoverRating] = useState(0)
   const [review, setReview] = useState('')
   const [anonymous, setAnonymous] = useState(false)
-  const [image, setImage] = useState(null)
-  const [imagePreview, setImagePreview] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
+  const [loadingShops, setLoadingShops] = useState(true)
+  const [loadingFoods, setLoadingFoods] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
-  const selectedShop = shops.find((item) => item.id === shop)
+  useEffect(() => {
+    const loadShops = async () => {
+      try {
+        const response = await api.get('/shops')
+        setShops(response.data.shops || [])
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Unable to load shops')
+      } finally {
+        setLoadingShops(false)
+      }
+    }
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0]
+    loadShops()
+  }, [])
 
-    if (!file) return
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file')
+  useEffect(() => {
+    if (!shop) {
+      setFoods([])
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be less than 5MB')
-      return
+    let cancelled = false
+
+    const loadFoods = async () => {
+      setLoadingFoods(true)
+      setFood('')
+
+      try {
+        const response = await api.get(
+          `/food?shop_id=${shop}&limit=100`
+        )
+
+        if (!cancelled) {
+          setFoods(response.data.foodItems || [])
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error.response?.data?.message || 'Unable to load food items')
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingFoods(false)
+        }
+      }
     }
 
-    setImage(file)
-    setImagePreview(URL.createObjectURL(file))
-  }
+    loadFoods()
 
-  const removeImage = () => {
-    setImage(null)
-    setImagePreview('')
-  }
+    return () => {
+      cancelled = true
+    }
+  }, [shop])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
 
     if (!shop) {
@@ -89,12 +103,40 @@ export default function CreateReview() {
       return
     }
 
-    toast.success('Review submitted successfully! (Demo)')
-    navigate('/')
+    if (imageUrl.trim()) {
+      try {
+        new URL(imageUrl.trim())
+      } catch {
+        toast.error('Please enter a valid image URL')
+        return
+      }
+    }
+
+    setSubmitting(true)
+
+    try {
+      await api.post('/reviews', {
+        food_item_id: Number(food),
+        rating,
+        body: review.trim(),
+        image_url: imageUrl.trim() || null,
+        is_anonymous: anonymous
+      })
+
+      toast.success('Review submitted successfully!')
+      navigate(`/shops/${shop}`)
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 'Failed to submit review'
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <div className="mx-auto max-w-3xl">
+
       <button
         onClick={() => navigate(-1)}
         className="mb-6 flex items-center gap-2 font-medium text-gray-600 hover:text-orange-600"
@@ -104,6 +146,7 @@ export default function CreateReview() {
       </button>
 
       <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
             Write a Review
@@ -114,7 +157,7 @@ export default function CreateReview() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Shop Selection */}
+
           <div>
             <label className="mb-2 block font-semibold text-gray-800">
               Select Shop <span className="text-red-500">*</span>
@@ -122,22 +165,28 @@ export default function CreateReview() {
 
             <select
               value={shop}
-              onChange={(e) => {
-                setShop(e.target.value)
-                setFood('')
-              }}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+              onChange={(e) => setShop(e.target.value)}
+              disabled={loadingShops}
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 disabled:bg-gray-100"
             >
-              <option value="">Choose a shop</option>
+              <option value="">
+                {loadingShops ? 'Loading shops...' : 'Choose a shop'}
+              </option>
+
               {shops.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
                 </option>
               ))}
             </select>
+
+            {!loadingShops && shops.length === 0 && (
+              <p className="mt-2 text-sm text-gray-500">
+                No shops are currently available.
+              </p>
+            )}
           </div>
 
-          {/* Food Selection */}
           <div>
             <label className="mb-2 block font-semibold text-gray-800">
               Select Food <span className="text-red-500">*</span>
@@ -146,22 +195,36 @@ export default function CreateReview() {
             <select
               value={food}
               onChange={(e) => setFood(e.target.value)}
-              disabled={!selectedShop}
+              disabled={!shop || loadingFoods}
               className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-100"
             >
               <option value="">
-                {selectedShop ? 'Choose a food item' : 'Select a shop first'}
+                {!shop
+                  ? 'Select a shop first'
+                  : loadingFoods
+                    ? 'Loading food items...'
+                    : 'Choose a food item'}
               </option>
 
-              {selectedShop?.foods.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+              {foods.map((item) => (
+                <option
+                  key={item.id}
+                  value={item.id}
+                  disabled={Number(item.is_available) !== 1}
+                >
+                  {item.name}
+                  {Number(item.is_available) !== 1 ? ' (Unavailable)' : ''}
                 </option>
               ))}
             </select>
+
+            {shop && !loadingFoods && foods.length === 0 && (
+              <p className="mt-2 text-sm text-gray-500">
+                This shop has no food items yet.
+              </p>
+            )}
           </div>
 
-          {/* Rating */}
           <div>
             <label className="mb-3 block font-semibold text-gray-800">
               Your Rating <span className="text-red-500">*</span>
@@ -194,7 +257,6 @@ export default function CreateReview() {
             </div>
           </div>
 
-          {/* Review Text */}
           <div>
             <label className="mb-2 block font-semibold text-gray-800">
               Write Your Review <span className="text-red-500">*</span>
@@ -214,49 +276,20 @@ export default function CreateReview() {
             </p>
           </div>
 
-          {/* Image Upload */}
           <div>
             <label className="mb-2 block font-semibold text-gray-800">
-              Add Food Photo <span className="font-normal text-gray-400">(Optional)</span>
+              Food Image URL <span className="font-normal text-gray-400">(Optional)</span>
             </label>
 
-            {!imagePreview ? (
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 px-5 py-8 transition hover:border-orange-400 hover:bg-orange-50">
-                <Upload size={30} className="mb-2 text-gray-400" />
-                <span className="font-medium text-gray-700">
-                  Click to upload an image
-                </span>
-                <span className="mt-1 text-xs text-gray-400">
-                  JPG, PNG or WEBP · Maximum 5MB
-                </span>
-
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-              </label>
-            ) : (
-              <div className="relative w-fit">
-                <img
-                  src={imagePreview}
-                  alt="Review preview"
-                  className="h-48 w-48 rounded-xl object-cover"
-                />
-
-                <button
-                  type="button"
-                  onClick={removeImage}
-                  className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1.5 text-white hover:bg-red-600"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            )}
+            <input
+              type="url"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://example.com/food-image.jpg"
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+            />
           </div>
 
-          {/* Anonymous */}
           <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-gray-50 p-4">
             <input
               type="checkbox"
@@ -275,8 +308,8 @@ export default function CreateReview() {
             </div>
           </label>
 
-          {/* Submit */}
           <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
+
             <button
               type="button"
               onClick={() => navigate('/')}
@@ -287,12 +320,24 @@ export default function CreateReview() {
 
             <button
               type="submit"
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600"
+              disabled={submitting || loadingShops || loadingFoods}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <Send size={18} />
-              Submit Review
+              {submitting ? (
+                <>
+                  <LoaderCircle size={18} className="animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send size={18} />
+                  Submit Review
+                </>
+              )}
             </button>
+
           </div>
+
         </form>
       </div>
     </div>

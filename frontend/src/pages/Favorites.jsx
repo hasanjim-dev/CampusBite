@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Heart,
@@ -9,79 +9,120 @@ import {
   Store,
   Utensils,
   Trash2,
+  LoaderCircle,
+  ShoppingBag,
 } from 'lucide-react'
-
-const initialFavorites = [
-  {
-    id: 1,
-    type: 'shop',
-    name: 'Food Court',
-    description: 'Delicious meals and snacks for students.',
-    location: 'University Campus',
-    rating: 4.8,
-    image:
-      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600',
-  },
-  {
-    id: 2,
-    type: 'shop',
-    name: 'Campus Cafe',
-    description: 'Coffee, drinks and fresh snacks.',
-    location: 'Central Campus',
-    rating: 4.6,
-    image:
-      'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600',
-  },
-  {
-    id: 3,
-    type: 'food',
-    name: 'Chicken Burger',
-    shop: 'Food Court',
-    description: 'Crispy chicken burger with fresh vegetables.',
-    rating: 4.9,
-    image:
-      'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600',
-  },
-  {
-    id: 4,
-    type: 'food',
-    name: 'Cold Coffee',
-    shop: 'Campus Cafe',
-    description: 'Refreshing chilled coffee.',
-    rating: 4.7,
-    image:
-      'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=600',
-  },
-]
+import toast from 'react-hot-toast'
+import api from '../api/axios'
 
 export default function Favorites() {
   const navigate = useNavigate()
-  const [favorites, setFavorites] = useState(initialFavorites)
+
+  const [favorites, setFavorites] = useState([])
   const [activeTab, setActiveTab] = useState('all')
   const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [removing, setRemoving] = useState(null)
+
+  useEffect(() => {
+    fetchFavorites()
+  }, [])
+
+  const fetchFavorites = async () => {
+    try {
+      setLoading(true)
+
+      const [shopsResponse, foodResponse] = await Promise.all([
+        api.get('/favorites/shops'),
+        api.get('/favorites/food-items'),
+      ])
+
+      const shops = (shopsResponse.data.data || []).map((shop) => ({
+        id: shop.id,
+        type: 'shop',
+        name: shop.name,
+        description: shop.description,
+        location: shop.location,
+        rating: shop.overall_rating,
+        image: shop.logo_url,
+      }))
+
+      const foods = (foodResponse.data.data || []).map((food) => ({
+        id: food.id,
+        type: 'food',
+        name: food.name,
+        shop: food.shop_name,
+        shopId: food.shop_id,
+        description: food.description,
+        rating: food.avg_rating,
+        image: food.image_url,
+        price: food.final_price ?? food.price,
+        isAvailable: Boolean(food.is_available),
+      }))
+
+      setFavorites([...shops, ...foods])
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 'Failed to load favorites.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredFavorites = useMemo(() => {
     return favorites.filter((item) => {
       const matchesTab =
         activeTab === 'all' || item.type === activeTab
 
+      const keyword = search.toLowerCase()
+
       const matchesSearch =
-        item.name.toLowerCase().includes(search.toLowerCase()) ||
-        (item.shop || '').toLowerCase().includes(search.toLowerCase())
+        item.name?.toLowerCase().includes(keyword) ||
+        item.shop?.toLowerCase().includes(keyword) ||
+        item.location?.toLowerCase().includes(keyword)
 
       return matchesTab && matchesSearch
     })
   }, [favorites, activeTab, search])
 
-  const removeFavorite = (id) => {
-    setFavorites((current) =>
-      current.filter((item) => item.id !== id)
-    )
+  const removeFavorite = async (item) => {
+    const key = `${item.type}-${item.id}`
+
+    try {
+      setRemoving(key)
+
+      if (item.type === 'shop') {
+        await api.delete(`/favorites/shops/${item.id}`)
+      } else {
+        await api.delete(`/favorites/food-items/${item.id}`)
+      }
+
+      setFavorites((current) =>
+        current.filter(
+          (favorite) =>
+            !(favorite.type === item.type && favorite.id === item.id)
+        )
+      )
+
+      toast.success('Removed from favorites.')
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 'Failed to remove favorite.'
+      )
+    } finally {
+      setRemoving(null)
+    }
   }
+
+  const tabs = [
+    { id: 'all', label: 'All Favorites', icon: Heart },
+    { id: 'shop', label: 'Shops', icon: Store },
+    { id: 'food', label: 'Food Items', icon: Utensils },
+  ]
 
   return (
     <div className="mx-auto max-w-6xl">
-      {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-red-100 p-3">
@@ -99,7 +140,6 @@ export default function Favorites() {
         </div>
       </div>
 
-      {/* Search */}
       <div className="relative mb-6">
         <Search
           className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -115,13 +155,8 @@ export default function Favorites() {
         />
       </div>
 
-      {/* Tabs */}
       <div className="mb-7 flex flex-wrap gap-3">
-        {[
-          { id: 'all', label: 'All Favorites', icon: Heart },
-          { id: 'shop', label: 'Shops', icon: Store },
-          { id: 'food', label: 'Food Items', icon: Utensils },
-        ].map((tab) => {
+        {tabs.map((tab) => {
           const Icon = tab.icon
 
           return (
@@ -141,7 +176,6 @@ export default function Favorites() {
         })}
       </div>
 
-      {/* Count */}
       <div className="mb-5 flex items-center justify-between">
         <h2 className="font-semibold text-gray-800">
           Saved Items
@@ -152,83 +186,118 @@ export default function Favorites() {
         </span>
       </div>
 
-      {/* Favorites Grid */}
-      {filteredFavorites.length > 0 ? (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-20">
+          <LoaderCircle className="animate-spin text-orange-500" size={38} />
+          <p className="mt-4 text-gray-500">Loading your favorites...</p>
+        </div>
+      ) : filteredFavorites.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredFavorites.map((item) => (
-            <div
-              key={item.id}
-              className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-            >
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                />
+          {filteredFavorites.map((item) => {
+            const key = `${item.type}-${item.id}`
 
-                <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-xs font-semibold text-orange-600 shadow-sm">
-                  {item.type === 'shop' ? 'Shop' : 'Food'}
-                </span>
-
-                <button
-                  onClick={() => removeFavorite(item.id)}
-                  title="Remove from favorites"
-                  className="absolute right-3 top-3 rounded-full bg-white p-2 text-red-500 shadow-sm transition hover:bg-red-50"
-                >
-                  <Trash2 size={17} />
-                </button>
-              </div>
-
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-lg font-bold text-gray-900">
-                    {item.name}
-                  </h3>
-
-                  <div className="flex shrink-0 items-center gap-1 text-sm font-semibold text-gray-700">
-                    <Star
-                      size={15}
-                      className="fill-yellow-400 text-yellow-400"
+            return (
+              <div
+                key={key}
+                className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+              >
+                <div className="relative flex h-48 items-center justify-center overflow-hidden bg-orange-50">
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                     />
-                    {item.rating}
-                  </div>
+                  ) : (
+                    <div className="text-orange-300">
+                      {item.type === 'shop' ? (
+                        <Store size={55} />
+                      ) : (
+                        <Utensils size={55} />
+                      )}
+                    </div>
+                  )}
+
+                  <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-xs font-semibold text-orange-600 shadow-sm">
+                    {item.type === 'shop' ? 'Shop' : 'Food'}
+                  </span>
+
+                  <button
+                    onClick={() => removeFavorite(item)}
+                    disabled={removing === key}
+                    title="Remove from favorites"
+                    className="absolute right-3 top-3 rounded-full bg-white p-2 text-red-500 shadow-sm transition hover:bg-red-50 disabled:opacity-50"
+                  >
+                    {removing === key ? (
+                      <LoaderCircle size={17} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={17} />
+                    )}
+                  </button>
                 </div>
 
-                {item.type === 'shop' ? (
-                  <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
-                    <MapPin size={15} />
-                    {item.location}
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-lg font-bold text-gray-900">
+                      {item.name}
+                    </h3>
+
+                    {Number(item.rating) > 0 && (
+                      <div className="flex shrink-0 items-center gap-1 text-sm font-semibold text-gray-700">
+                        <Star
+                          size={15}
+                          className="fill-yellow-400 text-yellow-400"
+                        />
+                        {Number(item.rating).toFixed(1)}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <p className="mt-2 text-sm text-orange-600">
-                    From {item.shop}
+
+                  {item.type === 'shop' ? (
+                    <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
+                      <MapPin size={15} />
+                      {item.location || 'Location not available'}
+                    </div>
+                  ) : (
+                    <div className="mt-2">
+                      <p className="text-sm text-orange-600">
+                        From {item.shop}
+                      </p>
+                      <p className="mt-1 font-semibold text-gray-800">
+                        ৳{Number(item.price || 0).toFixed(2)}
+                      </p>
+                      {!item.isAvailable && (
+                        <span className="mt-1 inline-block text-xs font-medium text-red-500">
+                          Currently unavailable
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="mt-3 min-h-10 text-sm leading-5 text-gray-500">
+                    {item.description || 'No description available.'}
                   </p>
-                )}
 
-                <p className="mt-3 min-h-10 text-sm leading-5 text-gray-500">
-                  {item.description}
-                </p>
-
-                <button
-                  onClick={() =>
-                    navigate(
-                      item.type === 'shop'
-                        ? `/shops/${item.id}`
-                        : `/shops`
-                    )
-                  }
-                  className="mt-5 w-full rounded-lg border border-orange-500 py-2.5 font-semibold text-orange-600 transition hover:bg-orange-500 hover:text-white"
-                >
-                  {item.type === 'shop' ? 'View Shop' : 'Explore Shops'}
-                </button>
+                  <button
+                    onClick={() =>
+                      navigate(
+                        item.type === 'shop'
+                          ? `/shops/${item.id}`
+                          : `/shops/${item.shopId}`
+                      )
+                    }
+                    className="mt-5 w-full rounded-lg border border-orange-500 py-2.5 font-semibold text-orange-600 transition hover:bg-orange-500 hover:text-white"
+                  >
+                    {item.type === 'shop' ? 'View Shop' : 'View Food Shop'}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-5 py-16 text-center">
-          <Heart size={45} className="mx-auto text-gray-300" />
+          <ShoppingBag size={45} className="mx-auto text-gray-300" />
 
           <h3 className="mt-4 text-xl font-bold text-gray-800">
             No Favorites Found
