@@ -22,27 +22,35 @@ export default function ManageShops() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
   const [selectedShop, setSelectedShop] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [updatingId, setUpdatingId] = useState(null)
-  const [error, setError] = useState('')
+ const [loading, setLoading] = useState(true)
+const [updatingId, setUpdatingId] = useState(null)
+const [error, setError] = useState('')
 
-  const fetchShops = async () => {
-    setLoading(true)
-    setError('')
+const fetchShops = async () => {
+  setLoading(true)
+  setError('')
 
-    try {
-      const response = await axios.get(`${API_URL}/shops`)
-      setShops(response.data.shops || [])
-    } catch (err) {
-      const message =
-        err.response?.data?.message || 'Could not load shops.'
+  try {
+    const token = localStorage.getItem('token')
 
-      setError(message)
-      toast.error(message)
-    } finally {
-      setLoading(false)
-    }
+    const response = await axios.get(`${API_URL}/admin/shops`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    setShops(response.data.shops || [])
+  } catch (err) {
+    const message =
+      err.response?.data?.message || 'Could not load shops.'
+
+    setError(message)
+    toast.error(message)
+  } finally {
+    setLoading(false)
   }
+}
+
 
   useEffect(() => {
     fetchShops()
@@ -73,15 +81,11 @@ export default function ManageShops() {
 
       toast.success(response.data.message || `Shop ${action}d successfully.`)
 
-      if (action === 'deactivate') {
-        setShops(current => current.filter(item => item.id !== shop.id))
+      await fetchShops()
 
-        if (selectedShop?.id === shop.id) {
-          setSelectedShop(null)
-        }
-      } else {
-        await fetchShops()
-      }
+if (selectedShop?.id === shop.id) {
+  setSelectedShop(null)
+}
     } catch (err) {
       toast.error(
         err.response?.data?.message || `Could not ${action} shop.`

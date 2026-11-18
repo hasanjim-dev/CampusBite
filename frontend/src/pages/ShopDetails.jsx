@@ -36,7 +36,7 @@ function ShopDetails() {
         const [shopResponse, menuResponse, reviewResponse] =
           await Promise.all([
             api.get(`/shops/${id}`),
-            api.get(`/food?shop_id=${id}&limit=100`),
+                       api.get(`/food-items?shop_id=${id}&limit=100`),
             api.get(`/reviews?shop_id=${id}&limit=50`)
           ])
 

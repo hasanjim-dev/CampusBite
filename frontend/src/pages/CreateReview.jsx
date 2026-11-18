@@ -56,7 +56,7 @@ export default function CreateReview() {
 
       try {
         const response = await api.get(
-          `/food?shop_id=${shop}&limit=100`
+          `/food-items?shop_id=${shop}&limit=100`
         )
 
         if (!cancelled) {

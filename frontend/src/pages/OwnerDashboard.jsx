@@ -41,84 +41,117 @@ export default function OwnerDashboard() {
   const [shop, setShop] = useState(null)
   const [reviews, setReviews] = useState([])
   const [foodItems, setFoodItems] = useState([])
+  const [totalReviews, setTotalReviews] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
+ useEffect(() => {
+  const fetchDashboard = async () => {
+    try {
+      setLoading(true)
+      setError('')
+
+      let currentShop
+
+      // First: Fetch owner's shop
       try {
-        setLoading(true)
-        setError('')
-
         const shopResponse = await api.get('/shops/my-shop')
-        const currentShop = shopResponse.data.shop
-
-        setShop(currentShop)
-
-        const [reviewResponse, foodResponse] = await Promise.all([
-          api.get('/reviews', {
-            params: {
-              shop_id: currentShop.id,
-              page: 1,
-              limit: 50,
-            },
-          }),
-          api.get('/food', {
-            params: {
-              shop_id: currentShop.id,
-              page: 1,
-              limit: 100,
-            },
-          }),
-        ])
-
-        setReviews(reviewResponse.data.reviews || [])
-        setFoodItems(foodResponse.data.foodItems || [])
+        currentShop = shopResponse.data.shop
       } catch (err) {
+        // If shop does not exist, show Create Your Shop screen
         if (err.response?.status === 404) {
           setShop(null)
-        } else {
-          setError(
-            err.response?.data?.message ||
-            'Could not load dashboard information.'
-          )
+          return
         }
-      } finally {
-        setLoading(false)
+
+        // Other errors should be handled by outer catch
+        throw err
       }
+
+      setShop(currentShop)
+
+      // Second: Fetch reviews and food items together
+      const [reviewResponse, foodResponse] = await Promise.all([
+        api.get('/reviews', {
+          params: {
+            shop_id: currentShop.id,
+            page: 1,
+            limit: 50,
+          },
+        }),
+
+        api.get('/food-items', {
+          params: {
+            shop_id: currentShop.id,
+            page: 1,
+            limit: 100,
+          },
+        }),
+      ])
+
+      // Third: Save fetched data
+      const loadedReviews = reviewResponse.data.reviews || []
+      const loadedFoodItems = foodResponse.data.foodItems || []
+
+      setReviews(loadedReviews)
+
+      setTotalReviews(
+        Number(
+          reviewResponse.data.pagination?.total ?? loadedReviews.length
+        )
+      )
+
+      setFoodItems(loadedFoodItems)
+
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+        'Could not load dashboard information.'
+      )
+    } finally {
+      setLoading(false)
     }
+  }
 
-    fetchDashboard()
-  }, [])
+  fetchDashboard()
+}, [])
 
-  const averageRating = reviews.length
-    ? (
-        reviews.reduce(
-          (total, review) => total + Number(review.rating || 0),
-          0
-        ) / reviews.length
-      ).toFixed(1)
-    : '0.0'
+ const totalFoodRatings = foodItems.reduce(
+  (total, item) => total + Number(item.rating_count || 0),
+  0
+)
+
+const averageRating = totalFoodRatings > 0
+  ? (
+      foodItems.reduce(
+        (total, item) =>
+          total +
+          Number(item.avg_rating || 0) *
+          Number(item.rating_count || 0),
+        0
+      ) / totalFoodRatings
+    ).toFixed(1)
+  : '0.0'
 
   const availableItems = foodItems.filter(
     (item) => Number(item.is_available) === 1
   ).length
 
   const stats = [
-    {
-      title: 'Total Reviews',
-      value: reviews.length,
-      icon: MessageSquare,
-      color: 'bg-blue-100 text-blue-600',
-      description: 'Reviews loaded from your shop',
-    },
-    {
-      title: 'Average Rating',
-      value: averageRating,
-      icon: Star,
-      color: 'bg-yellow-100 text-yellow-600',
-      description: 'Based on loaded reviews',
-    },
+   {
+  title: 'Total Reviews',
+  value: totalReviews,
+  icon: MessageSquare,
+  color: 'bg-blue-100 text-blue-600',
+  description: 'All published reviews',
+},
+{
+  title: 'Average Rating',
+  value: averageRating,
+  icon: Star,
+  color: 'bg-yellow-100 text-yellow-600',
+  description: 'Weighted average of food ratings',
+},
     {
       title: 'Menu Items',
       value: foodItems.length,
@@ -371,11 +404,11 @@ export default function OwnerDashboard() {
               </div>
             )}
 
-            {reviews.length > 5 && (
-              <div className="border-t border-gray-100 p-4 text-center text-xs text-gray-500">
-                Showing the latest 5 of {reviews.length} loaded reviews
-              </div>
-            )}
+           {totalReviews > 5 && (
+  <div className="border-t border-gray-100 p-4 text-center text-xs text-gray-500">
+    Showing the latest 5 of {totalReviews} reviews
+  </div>
+)}
           </div>
         </>
       )}
