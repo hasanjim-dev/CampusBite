@@ -5,6 +5,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
 
 const {
+  getAllShops,
   getAllUsers,
   getUserById,
   updateUserStatus,
@@ -14,6 +15,13 @@ const {
 } = require("../controllers/adminController");
 
 const router = express.Router();
+// ADMIN: VIEW ALL SHOPS
+router.get(
+  "/shops",
+  authMiddleware,
+  authorizeRoles("admin"),
+  getAllShops
+);
 
 // ==========================================
 // ADMIN: USER MANAGEMENT

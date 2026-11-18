@@ -1,4 +1,4 @@
-
+﻿
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
@@ -22,7 +22,6 @@ const emptyForm = {
   discount_percent: '0',
   is_available: true,
 }
-
 export default function ManageMenu() {
   const [items, setItems] = useState([])
   const [shop, setShop] = useState(null)
@@ -63,7 +62,7 @@ export default function ManageMenu() {
       }
 
       try {
-        const foodResponse = await api.get('/food', {
+        const foodResponse = await api.get('/food-items', {
           params: {
             shop_id: currentShop.id,
             page: 1,
@@ -170,10 +169,10 @@ export default function ManageMenu() {
       setSaving(true)
 
       if (editingId) {
-        await api.put(`/food/${editingId}`, payload)
+        await api.put(`/food-items/${editingId}`, payload)
         toast.success('Menu item updated successfully.')
       } else {
-        await api.post('/food', payload)
+        await api.post('/food-items', payload)
         toast.success('Menu item added successfully.')
       }
 
@@ -197,7 +196,7 @@ export default function ManageMenu() {
     }
 
     try {
-      await api.delete(`/food/${id}`)
+      await api.delete(`/food-items/${id}`)
       setItems((previous) =>
         previous.filter((item) => item.id !== id)
       )
@@ -217,7 +216,7 @@ export default function ManageMenu() {
     const nextAvailability = !currentlyAvailable
 
     try {
-      await api.put(`/food/${item.id}`, {
+      await api.put(`/food-items/${item.id}`, {
         is_available: nextAvailability,
       })
 
@@ -421,13 +420,13 @@ export default function ManageMenu() {
 
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xl font-bold text-orange-600">
-                    ৳{Number(item.final_price ?? item.price).toFixed(2)}
+                                    ৳{Number(item.final_price ?? item.price).toFixed(2)}
                   </span>
 
                   {Number(item.discount_percent) > 0 && (
                     <>
                       <span className="text-sm text-gray-400 line-through">
-                        ৳{Number(item.price).toFixed(2)}
+                                            ৳{Number(item.price).toFixed(2)}
                       </span>
 
                       <span className="rounded-full bg-green-50 px-2 py-1 text-xs font-semibold text-green-700">
@@ -526,7 +525,7 @@ export default function ManageMenu() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="mb-2 block text-sm font-semibold">
-                    Price (৳) *
+                  Price(৳)*
                   </label>
 
                   <input

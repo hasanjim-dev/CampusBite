@@ -3,6 +3,47 @@ const db = require("../config/db");
 const { notifyUsers } = require("../services/notificationService");
 
 // ==========================================
+// ADMIN: VIEW ALL SHOPS (ACTIVE + INACTIVE)
+// ==========================================
+
+const getAllShops = async (req, res) => {
+  try {
+    const [shops] = await db.execute(
+      `SELECT
+        id,
+        owner_id,
+        name,
+        description,
+        logo_url,
+        location,
+        contact_phone,
+        contact_email,
+        opening_hours,
+        is_active,
+        created_at,
+        updated_at
+       FROM shops
+       ORDER BY created_at DESC`
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "All shops retrieved successfully.",
+      total: shops.length,
+      shops
+    });
+
+  } catch (error) {
+    console.error("Get all admin shops error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve shops."
+    });
+  }
+};
+
+// ==========================================
 // ADMIN: DEACTIVATE ANY SHOP
 // ==========================================
 
@@ -425,6 +466,7 @@ async function updateComplaintStatus(req, res) {
 // ==========================================
 
 module.exports = {
+  getAllShops,
   deactivateShop,
   activateShop,
   getAllUsers,
