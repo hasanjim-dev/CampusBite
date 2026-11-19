@@ -607,10 +607,410 @@ async function getPublicComplaintAttachment(req, res) {
   }
 }
 
+// REUSABLE: Attach uploaded files to complaints
+async function attachComplaintAttachments(complaints) {
+  if (!complaints.length) {
+    return complaints;
+  }
 
+  const complaintIds = complaints.map(
+    (complaint) => complaint.id
+  );
+
+  const placeholders = complaintIds.map(() => "?").join(", ");
+
+  const [attachmentRows] = await pool.execute(
+    `SELECT
+       id,
+       complaint_id,
+       original_filename,
+       mime_type,
+       file_size
+     FROM complaint_attachments
+     WHERE complaint_id IN (${placeholders})
+     ORDER BY id ASC`,
+    complaintIds
+  );
+
+  const attachmentsByComplaint = {};
+
+  for (const attachment of attachmentRows) {
+    if (!attachmentsByComplaint[attachment.complaint_id]) {
+      attachmentsByComplaint[attachment.complaint_id] = [];
+    }
+
+    attachmentsByComplaint[attachment.complaint_id].push({
+      id: attachment.id,
+      original_filename: attachment.original_filename,
+      mime_type: attachment.mime_type,
+      file_size: attachment.file_size,
+      url: `/api/complaints/attachments/${attachment.id}`
+    });
+  }
+
+  return complaints.map((complaint) => ({
+    ...complaint,
+    attachments: attachmentsByComplaint[complaint.id] || []
+  }));
+}
+// GET STUDENT'S OWN COMPLAINTS
+async function getMyComplaints(req, res) {
+  try {
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = 20;
+    const offset = (page - 1) * limit;
+
+    const [complaints] = await pool.execute(
+      `SELECT
+         c.id,
+         CASE
+           WHEN c.is_anonymous = 1 THEN 'You (Anonymous)'
+           ELSE u.name
+         END AS complainant_name,
+         u.avatar_url AS complainant_avatar,
+         c.shop_id,
+         s.name AS shop_name,
+         c.food_item_id,
+         f.name AS food_item_name,
+         c.category_id,
+         cc.name AS category_name,
+         c.description,
+         c.status,
+         c.is_anonymous,
+         c.admin_note,
+         c.created_at,
+         c.updated_at
+       FROM complaints c
+       INNER JOIN users u ON c.user_id = u.id
+       INNER JOIN shops s ON c.shop_id = s.id
+       INNER JOIN complaint_categories cc ON c.category_id = cc.id
+       LEFT JOIN food_items f ON c.food_item_id = f.id
+       WHERE c.user_id = ?
+       ORDER BY c.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [req.user.id, limit, offset]
+    );
+
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) AS total
+       FROM complaints
+       WHERE user_id = ?`,
+      [req.user.id]
+    );
+
+    const total = countResult[0].total;
+
+    const complaintsWithAttachments =
+      await attachComplaintAttachments(complaints);
+
+    return res.status(200).json({
+      success: true,
+      message: "Your complaints retrieved successfully.",
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      },
+      complaints: complaintsWithAttachments
+    });
+  } catch (error) {
+    console.error("Get my complaints error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve your complaints."
+    });
+  }
+}
+// GET COMPLAINTS AGAINST SHOP OWNER'S OWN SHOP
+async function getMyShopComplaints(req, res) {
+  try {
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = 20;
+    const offset = (page - 1) * limit;
+
+    // Find the shop owned by the logged-in user
+    const [shops] = await pool.execute(
+      `SELECT id, name
+       FROM shops
+       WHERE owner_id = ?
+       LIMIT 1`,
+      [req.user.id]
+    );
+
+    if (shops.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "You do not have a registered shop."
+      });
+    }
+
+    const shopId = shops[0].id;
+
+    const [complaints] = await pool.execute(
+      `SELECT
+         c.id,
+         CASE
+           WHEN c.is_anonymous = 1 THEN 'Anonymous'
+           ELSE u.name
+         END AS complainant_name,
+         CASE
+           WHEN c.is_anonymous = 1 THEN NULL
+           ELSE u.avatar_url
+         END AS complainant_avatar,
+         c.shop_id,
+         s.name AS shop_name,
+         c.food_item_id,
+         f.name AS food_item_name,
+         c.category_id,
+         cc.name AS category_name,
+         c.description,
+         c.status,
+         c.is_anonymous,
+         c.created_at,
+         c.updated_at
+       FROM complaints c
+       INNER JOIN users u ON c.user_id = u.id
+       INNER JOIN shops s ON c.shop_id = s.id
+       INNER JOIN complaint_categories cc ON c.category_id = cc.id
+       LEFT JOIN food_items f ON c.food_item_id = f.id
+       WHERE c.shop_id = ?
+       ORDER BY c.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [shopId, limit, offset]
+    );
+
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) AS total
+       FROM complaints
+       WHERE shop_id = ?`,
+      [shopId]
+    );
+
+    const total = countResult[0].total;
+
+    const complaintsWithAttachments =
+      await attachComplaintAttachments(complaints);
+
+    return res.status(200).json({
+      success: true,
+      message: "Shop complaints retrieved successfully.",
+      shop: {
+        id: shopId,
+        name: shops[0].name
+      },
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      },
+      complaints: complaintsWithAttachments
+    });
+  } catch (error) {
+    console.error("Get shop complaints error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve shop complaints."
+    });
+  }
+}
+// GET ALL COMPLAINTS FOR ADMIN
+async function getAdminComplaints(req, res) {
+  try {
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = 20;
+    const offset = (page - 1) * limit;
+
+    const [complaints] = await pool.execute(
+      `SELECT
+         c.id,
+         c.user_id,
+         u.name AS complainant_name,
+         u.email AS complainant_email,
+         u.avatar_url AS complainant_avatar,
+         c.shop_id,
+         s.name AS shop_name,
+         c.food_item_id,
+         f.name AS food_item_name,
+         c.category_id,
+         cc.name AS category_name,
+         c.description,
+         c.status,
+         c.is_public,
+         c.is_anonymous,
+         c.admin_note,
+         c.handled_by,
+         c.created_at,
+         c.updated_at
+       FROM complaints c
+       INNER JOIN users u ON c.user_id = u.id
+       INNER JOIN shops s ON c.shop_id = s.id
+       INNER JOIN complaint_categories cc ON c.category_id = cc.id
+       LEFT JOIN food_items f ON c.food_item_id = f.id
+       ORDER BY c.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) AS total
+       FROM complaints`
+    );
+
+    const total = countResult[0].total;
+
+    const complaintsWithAttachments =
+      await attachComplaintAttachments(complaints);
+
+    return res.status(200).json({
+      success: true,
+      message: "All complaints retrieved successfully.",
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      },
+      complaints: complaintsWithAttachments
+    });
+  } catch (error) {
+    console.error("Get admin complaints error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve complaints."
+    });
+  }
+}
+// DELETE COMPLAINT (ADMIN ONLY)
+async function deleteComplaint(req, res) {
+  let connection;
+
+  try {
+    const { id } = req.params;
+
+    if (!/^[1-9]\d*$/.test(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid complaint ID."
+      });
+    }
+
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // Lock and retrieve complaint
+    const [complaints] = await connection.execute(
+      `SELECT id
+       FROM complaints
+       WHERE id = ?
+       FOR UPDATE`,
+      [id]
+    );
+
+    if (complaints.length === 0) {
+      await connection.rollback();
+
+      return res.status(404).json({
+        success: false,
+        message: "Complaint not found."
+      });
+    }
+
+    // Retrieve attachment filenames before deleting complaint
+    const [attachments] = await connection.execute(
+      `SELECT stored_filename
+       FROM complaint_attachments
+       WHERE complaint_id = ?`,
+      [id]
+    );
+
+    // Delete complaint; attachment metadata is deleted by FK cascade
+    await connection.execute(
+      `DELETE FROM complaints
+       WHERE id = ?`,
+      [id]
+    );
+
+    await connection.commit();
+
+    // Delete physical attachment files after successful DB commit
+    const uploadDirectory = path.resolve(
+      __dirname,
+      "../../private_uploads/complaints"
+    );
+
+    await Promise.all(
+      attachments.map(async (attachment) => {
+        try {
+          const filename = path.basename(
+            attachment.stored_filename
+          );
+
+          if (filename !== attachment.stored_filename) {
+            console.error("Invalid stored attachment filename.");
+            return;
+          }
+
+          const filePath = path.resolve(
+            uploadDirectory,
+            filename
+          );
+
+          if (path.dirname(filePath) !== uploadDirectory) {
+            console.error("Unsafe attachment path blocked.");
+            return;
+          }
+
+          await fs.promises.unlink(filePath);
+        } catch (fileError) {
+          if (fileError.code !== "ENOENT") {
+            console.error(
+              "Complaint attachment cleanup failed:",
+              fileError.message
+            );
+          }
+        }
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Complaint deleted successfully.",
+      deleted_id: Number(id)
+    });
+  } catch (error) {
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error("Complaint delete rollback error:", rollbackError.message);
+      }
+    }
+
+    console.error("Delete complaint error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete complaint."
+    });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+}
 module.exports = {
   getComplaintCategories,
   createComplaint,
   getPublicComplaints,
-  getPublicComplaintAttachment
+  getPublicComplaintAttachment,
+
+  getMyComplaints,
+  getMyShopComplaints,
+  getAdminComplaints,
+  deleteComplaint
 };

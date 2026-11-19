@@ -1,4 +1,4 @@
-
+﻿
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -12,7 +12,9 @@ import {
   LoaderCircle,
   ArrowRight,
 } from 'lucide-react'
+
 import api from '../api/axios'
+import ComplaintList from '../components/common/ComplaintList'
 
 function formatTime(date) {
   if (!date) return ''
@@ -45,113 +47,112 @@ export default function OwnerDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
- useEffect(() => {
-  const fetchDashboard = async () => {
-    try {
-      setLoading(true)
-      setError('')
-
-      let currentShop
-
-      // First: Fetch owner's shop
+  useEffect(() => {
+    const fetchDashboard = async () => {
       try {
-        const shopResponse = await api.get('/shops/my-shop')
-        currentShop = shopResponse.data.shop
-      } catch (err) {
-        // If shop does not exist, show Create Your Shop screen
-        if (err.response?.status === 404) {
-          setShop(null)
-          return
+        setLoading(true)
+        setError('')
+
+        let currentShop
+
+        // First: Fetch owner's shop
+        try {
+          const shopResponse = await api.get('/shops/my-shop')
+          currentShop = shopResponse.data.shop
+        } catch (err) {
+          // If shop does not exist, show Create Your Shop screen
+          if (err.response?.status === 404) {
+            setShop(null)
+            return
+          }
+
+          throw err
         }
 
-        // Other errors should be handled by outer catch
-        throw err
-      }
+        setShop(currentShop)
 
-      setShop(currentShop)
+        // Second: Fetch reviews and food items together
+        const [reviewResponse, foodResponse] = await Promise.all([
+          api.get('/reviews', {
+            params: {
+              shop_id: currentShop.id,
+              page: 1,
+              limit: 50,
+            },
+          }),
 
-      // Second: Fetch reviews and food items together
-      const [reviewResponse, foodResponse] = await Promise.all([
-        api.get('/reviews', {
-          params: {
-            shop_id: currentShop.id,
-            page: 1,
-            limit: 50,
-          },
-        }),
+          api.get('/food-items', {
+            params: {
+              shop_id: currentShop.id,
+              page: 1,
+              limit: 100,
+            },
+          }),
+        ])
 
-        api.get('/food-items', {
-          params: {
-            shop_id: currentShop.id,
-            page: 1,
-            limit: 100,
-          },
-        }),
-      ])
+        // Third: Save fetched data
+        const loadedReviews = reviewResponse.data.reviews || []
+        const loadedFoodItems = foodResponse.data.foodItems || []
 
-      // Third: Save fetched data
-      const loadedReviews = reviewResponse.data.reviews || []
-      const loadedFoodItems = foodResponse.data.foodItems || []
+        setReviews(loadedReviews)
 
-      setReviews(loadedReviews)
-
-      setTotalReviews(
-        Number(
-          reviewResponse.data.pagination?.total ?? loadedReviews.length
+        setTotalReviews(
+          Number(
+            reviewResponse.data.pagination?.total ?? loadedReviews.length
+          )
         )
-      )
 
-      setFoodItems(loadedFoodItems)
-
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-        'Could not load dashboard information.'
-      )
-    } finally {
-      setLoading(false)
+        setFoodItems(loadedFoodItems)
+      } catch (err) {
+        setError(
+          err.response?.data?.message ||
+            'Could not load dashboard information.'
+        )
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  fetchDashboard()
-}, [])
+    fetchDashboard()
+  }, [])
 
- const totalFoodRatings = foodItems.reduce(
-  (total, item) => total + Number(item.rating_count || 0),
-  0
-)
+  const totalFoodRatings = foodItems.reduce(
+    (total, item) => total + Number(item.rating_count || 0),
+    0
+  )
 
-const averageRating = totalFoodRatings > 0
-  ? (
-      foodItems.reduce(
-        (total, item) =>
-          total +
-          Number(item.avg_rating || 0) *
-          Number(item.rating_count || 0),
-        0
-      ) / totalFoodRatings
-    ).toFixed(1)
-  : '0.0'
+  const averageRating =
+    totalFoodRatings > 0
+      ? (
+          foodItems.reduce(
+            (total, item) =>
+              total +
+              Number(item.avg_rating || 0) *
+                Number(item.rating_count || 0),
+            0
+          ) / totalFoodRatings
+        ).toFixed(1)
+      : '0.0'
 
   const availableItems = foodItems.filter(
     (item) => Number(item.is_available) === 1
   ).length
 
   const stats = [
-   {
-  title: 'Total Reviews',
-  value: totalReviews,
-  icon: MessageSquare,
-  color: 'bg-blue-100 text-blue-600',
-  description: 'All published reviews',
-},
-{
-  title: 'Average Rating',
-  value: averageRating,
-  icon: Star,
-  color: 'bg-yellow-100 text-yellow-600',
-  description: 'Weighted average of food ratings',
-},
+    {
+      title: 'Total Reviews',
+      value: totalReviews,
+      icon: MessageSquare,
+      color: 'bg-blue-100 text-blue-600',
+      description: 'All published reviews',
+    },
+    {
+      title: 'Average Rating',
+      value: averageRating,
+      icon: Star,
+      color: 'bg-yellow-100 text-yellow-600',
+      description: 'Weighted average of food ratings',
+    },
     {
       title: 'Menu Items',
       value: foodItems.length,
@@ -177,6 +178,7 @@ const averageRating = totalFoodRatings > 0
           <p className="text-sm font-semibold text-orange-600">
             SHOP OWNER PANEL
           </p>
+
           <h1 className="mt-1 text-3xl font-bold text-gray-900">
             Dashboard
           </h1>
@@ -184,12 +186,15 @@ const averageRating = totalFoodRatings > 0
 
         <div className="rounded-2xl border bg-white p-10 text-center">
           <Store size={45} className="mx-auto text-orange-400" />
+
           <h2 className="mt-4 text-xl font-bold text-gray-800">
             Welcome to CampusBite!
           </h2>
+
           <p className="mt-2 text-sm text-gray-500">
             Create your shop to start managing food items and receiving reviews.
           </p>
+
           <button
             type="button"
             onClick={() => navigate('/owner/shop')}
@@ -210,9 +215,11 @@ const averageRating = totalFoodRatings > 0
           <p className="mb-1 text-sm font-semibold text-orange-500">
             SHOP OWNER PANEL
           </p>
+
           <h1 className="text-3xl font-bold text-gray-800">
             Dashboard
           </h1>
+
           <p className="mt-2 text-gray-500">
             Welcome back! Here's your shop overview.
           </p>
@@ -234,6 +241,7 @@ const averageRating = totalFoodRatings > 0
 
       {shop && (
         <>
+          {/* Dashboard Statistics */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             {stats.map((stat) => {
               const Icon = stat.icon
@@ -248,6 +256,7 @@ const averageRating = totalFoodRatings > 0
                       <p className="text-sm text-gray-500">
                         {stat.title}
                       </p>
+
                       <h2 className="mt-2 text-3xl font-bold text-gray-800">
                         {stat.value}
                       </h2>
@@ -266,22 +275,26 @@ const averageRating = totalFoodRatings > 0
             })}
           </div>
 
+          {/* My Shop Information */}
           <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-bold text-gray-800">
                   My Shop
                 </h2>
+
                 <p className="mt-1 text-sm text-gray-500">
                   Your shop information
                 </p>
               </div>
 
-              <span className={`w-fit rounded-full px-3 py-1 text-sm font-medium ${
-                Number(shop.is_active) === 1
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-red-100 text-red-700'
-              }`}>
+              <span
+                className={`w-fit rounded-full px-3 py-1 text-sm font-medium ${
+                  Number(shop.is_active) === 1
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
+                }`}
+              >
                 {Number(shop.is_active) === 1 ? 'Active' : 'Inactive'}
               </span>
             </div>
@@ -335,12 +348,14 @@ const averageRating = totalFoodRatings > 0
             </button>
           </div>
 
+          {/* Recent Reviews */}
           <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-gray-100 p-6">
               <div>
                 <h2 className="text-xl font-bold text-gray-800">
                   Recent Reviews
                 </h2>
+
                 <p className="mt-1 text-sm text-gray-500">
                   Latest feedback from your shop
                 </p>
@@ -361,6 +376,7 @@ const averageRating = totalFoodRatings > 0
                         <h3 className="font-semibold text-gray-800">
                           {review.reviewer_name || 'Anonymous'}
                         </h3>
+
                         <p className="mt-1 text-sm text-orange-600">
                           {review.food_item_name}
                         </p>
@@ -394,21 +410,35 @@ const averageRating = totalFoodRatings > 0
               </div>
             ) : (
               <div className="p-10 text-center">
-                <MessageSquare size={35} className="mx-auto text-gray-300" />
+                <MessageSquare
+                  size={35}
+                  className="mx-auto text-gray-300"
+                />
+
                 <p className="mt-3 font-semibold text-gray-700">
                   No reviews yet
                 </p>
+
                 <p className="mt-1 text-sm text-gray-500">
                   Student reviews will appear here.
                 </p>
               </div>
             )}
 
-           {totalReviews > 5 && (
-  <div className="border-t border-gray-100 p-4 text-center text-xs text-gray-500">
-    Showing the latest 5 of {totalReviews} reviews
-  </div>
-)}
+            {totalReviews > 5 && (
+              <div className="border-t border-gray-100 p-4 text-center text-xs text-gray-500">
+                Showing the latest 5 of {totalReviews} reviews
+              </div>
+            )}
+          </div>
+
+          {/* Complaints Against My Shop */}
+          <div className="mt-8">
+            <ComplaintList
+              endpoint="/complaints/my-shop"
+              title="Complaints Against My Shop"
+              subtitle="View complaints submitted about your shop. Anonymous complainant identities remain private."
+            />
           </div>
         </>
       )}

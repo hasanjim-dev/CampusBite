@@ -22,6 +22,8 @@ import EventDetails from './pages/EventDetails'
 import CreateReview from './pages/CreateReview'
 import Favorites from './pages/Favorites'
 import Complaint from './pages/Complaint'
+import Complaints from './pages/Complaints'
+import MyComplaints from './pages/MyComplaints'
 import Notifications from './pages/Notifications'
 import Profile from './pages/Profile'
 
@@ -32,6 +34,7 @@ import ManageMenu from './pages/owner/ManageMenu'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ManageUsers from './pages/admin/ManageUsers'
 import ManageShops from './pages/admin/ManageShops'
+import AdminComplaints from './pages/admin/AdminComplaints'
 
 function NotFound() {
   return (
@@ -74,6 +77,8 @@ export default function App() {
           >
             <Route path="/reviews/new" element={<CreateReview />} />
             <Route path="/favorites" element={<Favorites />} />
+            <Route path="/complaints" element={<Complaints />} />
+            <Route path="/complaints/my" element={<MyComplaints />} />
             <Route path="/complaints/new" element={<Complaint />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
@@ -90,6 +95,10 @@ export default function App() {
             <Route path="/owner" element={<OwnerDashboard />} />
             <Route path="/owner/shop" element={<ManageShop />} />
             <Route path="/owner/menu" element={<ManageMenu />} />
+            <Route
+  path="/owner/complaints"
+  element={<Complaints showActions={false} />}
+/>
           </Route>
 
           {/* Admin Routes */}
@@ -103,6 +112,7 @@ export default function App() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/users" element={<ManageUsers />} />
             <Route path="/admin/shops" element={<ManageShops />} />
+            <Route path="/admin/complaints" element={<AdminComplaints />} />
           </Route>
 
           {/* Not Found */}
