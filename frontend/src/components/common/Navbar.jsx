@@ -17,22 +17,23 @@ export default function Navbar() {
 
   const roleLinks = {
     student: [
-      { to: '/favorites', label: 'Favorites' },
-      { to: '/notifications', label: 'Notifications' },
-      { to: '/complaints/new', label: 'Complaints' },
-      { to: '/profile', label: 'My Profile' },
-    ],
-
+  { to: '/favorites', label: 'Favorites' },
+  { to: '/complaints', label: 'Complaints' },
+  { to: '/notifications', label: 'Notifications' },
+  { to: '/profile', label: 'My Profile' },
+],
     shop_owner: [
       { to: '/owner', label: 'Dashboard' },
       { to: '/owner/shop', label: 'Manage Shop' },
       { to: '/owner/menu', label: 'Manage Menu' },
+      { to: '/owner/complaints', label: 'Complaints' },
     ],
 
     admin: [
       { to: '/admin', label: 'Dashboard' },
       { to: '/admin/users', label: 'Manage Users' },
       { to: '/admin/shops', label: 'Manage Shops' },
+      { to: '/admin/complaints', label: 'Complaints' },
     ],
   }
 
@@ -40,7 +41,6 @@ export default function Navbar() {
     ...publicLinks,
     ...(roleLinks[user?.role] || []),
   ]
-
   const linkStyle = ({ isActive }) =>
     `text-sm font-medium transition-colors ${
       isActive

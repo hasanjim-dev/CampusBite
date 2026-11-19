@@ -187,7 +187,7 @@ export default function Complaint() {
         if (item.preview) URL.revokeObjectURL(item.preview)
       })
 
-      navigate('/profile')
+      navigate('/complaints/my')
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
@@ -347,7 +347,7 @@ export default function Complaint() {
                 </span>
 
                 <span className="mt-2 text-xs text-gray-400">
-                  JPG, PNG, WEBP or PDF · Max 5 MB each · Up to 3 files
+                  JPG, PNG, WEBP or PDF Â· Max 5 MB each Â· Up to 3 files
                 </span>
 
                 <input
