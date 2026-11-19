@@ -43,7 +43,6 @@ export default function Navbar() {
     ...publicLinks,
     ...(roleLinks[user?.role] || []),
   ]
-
   const linkStyle = ({ isActive }) =>
     `text-sm font-medium transition-colors ${
       isActive
