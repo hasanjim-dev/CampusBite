@@ -11,10 +11,19 @@ import {
   X,
   Store,
   RefreshCw,
+  Star,
 } from 'lucide-react'
 import api from '../api/axios'
+import toast from 'react-hot-toast'
+import { useAuth } from '../context/AuthContext'
 
-function ShopCard({ shop }) {
+function ShopCard({
+  shop,
+  isFavorite,
+  onToggleFavorite,
+  favoriteLoading,
+  canFavorite,
+}) {
   const navigate = useNavigate()
 
   return (
@@ -29,7 +38,28 @@ function ShopCard({ shop }) {
         ) : (
           <Store size={64} className="text-orange-300" />
         )}
-
+{canFavorite && (
+  <button
+    type="button"
+    onClick={() => onToggleFavorite(shop.id)}
+    disabled={favoriteLoading}
+    title={
+      isFavorite
+        ? 'Remove from favorites'
+        : 'Add to favorites'
+    }
+    className="absolute right-4 top-4 z-10 rounded-full bg-white p-3 shadow-md transition hover:scale-110 disabled:opacity-50"
+  >
+    <Star
+      size={22}
+      className={
+        isFavorite
+          ? 'fill-yellow-400 text-yellow-500'
+          : 'text-gray-500'
+      }
+    />
+  </button>
+)}
         <span className="absolute bottom-4 right-4 rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700 shadow">
           Campus Shop
         </span>
@@ -68,6 +98,10 @@ function ShopCard({ shop }) {
 }
 
 export default function Shops() {
+    const { user } = useAuth()
+
+  const [favoriteShopIds, setFavoriteShopIds] = useState(new Set())
+  const [favoriteLoadingIds, setFavoriteLoadingIds] = useState(new Set())
   const [shops, setShops] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -98,6 +132,72 @@ export default function Shops() {
 
     fetchShops()
   }, [])
+    useEffect(() => {
+    if (user?.role !== 'student') {
+      setFavoriteShopIds(new Set())
+      return
+    }
+
+    const fetchFavoriteShops = async () => {
+      try {
+        const response = await api.get('/favorites/shops')
+
+        const favoriteIds = (response.data.data || []).map(
+          (shop) => Number(shop.id)
+        )
+
+        setFavoriteShopIds(new Set(favoriteIds))
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message ||
+          'Failed to load favorite shops.'
+        )
+      }
+    }
+
+    fetchFavoriteShops()
+  }, [user?.role])
+    const toggleFavorite = async (shopId) => {
+    const id = Number(shopId)
+    const isFavorite = favoriteShopIds.has(id)
+
+    try {
+      setFavoriteLoadingIds((current) =>
+        new Set([...current, id])
+      )
+
+      if (isFavorite) {
+        await api.delete(`/favorites/shops/${id}`)
+
+        setFavoriteShopIds((current) => {
+          const updated = new Set(current)
+          updated.delete(id)
+          return updated
+        })
+
+        toast.success('Shop removed from favorites.')
+      } else {
+        await api.post(`/favorites/shops/${id}`)
+
+        setFavoriteShopIds((current) =>
+          new Set([...current, id])
+        )
+
+        toast.success('Shop added to favorites.')
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+        'Failed to update favorites.'
+      )
+    } finally {
+      setFavoriteLoadingIds((current) => {
+        const updated = new Set(current)
+        updated.delete(id)
+        return updated
+      })
+    }
+  }
 
   const filteredShops = useMemo(() => {
     const keyword = search.toLowerCase().trim()
@@ -201,9 +301,16 @@ export default function Shops() {
           </div>
         ) : filteredShops.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredShops.map((shop) => (
-              <ShopCard key={shop.id} shop={shop} />
-            ))}
+           {filteredShops.map((shop) => (
+  <ShopCard
+    key={shop.id}
+    shop={shop}
+    isFavorite={favoriteShopIds.has(Number(shop.id))}
+    onToggleFavorite={toggleFavorite}
+    favoriteLoading={favoriteLoadingIds.has(Number(shop.id))}
+    canFavorite={user?.role === 'student'}
+  />
+))}
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center">
