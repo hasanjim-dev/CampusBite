@@ -19,7 +19,7 @@ router.get("/review/:reviewId", getReviewComments);
 router.post(
   "/",
   authMiddleware,
-  authorizeRoles("student"),
+  authorizeRoles("student", "shop_owner"),
   createComment
 );
 

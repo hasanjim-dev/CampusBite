@@ -34,7 +34,7 @@ router.delete(
 router.get(
   "/:id/reaction",
   authMiddleware,
-  authorizeRoles("student"),
+  authorizeRoles("student", "shop_owner"),
   reviewController.getReviewReaction
 );
 
@@ -42,7 +42,7 @@ router.get(
 router.post(
   "/:id/reaction",
   authMiddleware,
-  authorizeRoles("student"),
+  authorizeRoles("student", "shop_owner"),
   reviewController.toggleReviewReaction
 );
 
