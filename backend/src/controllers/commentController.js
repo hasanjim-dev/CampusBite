@@ -12,8 +12,10 @@ function buildCommentTree(rows) {
       id: row.id,
       review_id: row.review_id,
       user_id: row.user_id,
-      user_name: row.user_name,
-      parent_comment_id: row.parent_comment_id,
+user_name: row.user_name,
+user_role: row.user_role,
+is_shop_owner: row.user_role === "shop_owner",
+parent_comment_id: row.parent_comment_id,
       body:
         row.status === "removed"
           ? "This comment was deleted."
@@ -78,6 +80,7 @@ async function getReviewComments(req, res) {
          c.review_id,
          c.user_id,
          u.name AS user_name,
+         u.role AS user_role,
          c.parent_comment_id,
          c.body,
          c.is_edited,
@@ -140,11 +143,12 @@ async function createComment(req, res) {
     }
 
     const [reviews] = await pool.execute(
-      `SELECT id, user_id
-FROM reviews
-       WHERE id = ? AND status = 'published'`,
-      [reviewId]
-    );
+  `SELECT r.id, r.user_id, s.owner_id
+   FROM reviews r
+   JOIN shops s ON s.id = r.shop_id
+   WHERE r.id = ? AND r.status = 'published'`,
+  [reviewId]
+);
 
     if (reviews.length === 0) {
       return res.status(404).json({
@@ -152,6 +156,15 @@ FROM reviews
         message: "Review not found or unavailable."
       });
     }
+    if (
+  req.user.role === "shop_owner" &&
+  Number(reviews[0].owner_id) !== Number(req.user.id)
+) {
+  return res.status(403).json({
+    success: false,
+    message: "You can only comment on reviews of your own shop."
+  });
+}
 
     let parentId = null;
     let parentOwnerId = null;
@@ -202,6 +215,7 @@ FROM comments
          c.review_id,
          c.user_id,
          u.name AS user_name,
+         u.role AS user_role,
          c.parent_comment_id,
          c.body,
          c.is_edited,

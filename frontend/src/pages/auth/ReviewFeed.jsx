@@ -95,9 +95,17 @@ function CommentItem({
       <div className="rounded-xl bg-gray-50 p-3">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold text-gray-800">
-              {comment.user_name}
-            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+  <p className="text-sm font-semibold text-gray-800">
+    {comment.user_name}
+  </p>
+
+  {comment.is_shop_owner && (
+    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+      Shop Owner
+    </span>
+  )}
+</div>
             {comment.is_edited === 1 && (
               <span className="text-xs text-gray-400">Edited</span>
             )}
@@ -157,9 +165,13 @@ function CommentItem({
             </div>
           </div>
         ) : (
-          <p className="mt-1 text-sm leading-6 text-gray-600">
-            {comment.body}
-          </p>
+          <p
+  className={`mt-1 text-sm leading-6 text-gray-600 ${
+    comment.is_shop_owner ? 'font-bold' : ''
+  }`}
+>
+  {comment.body}
+</p>
         )}
 
         {comment.status === 'published' && (
@@ -352,8 +364,8 @@ function ReviewCard({
           onClick={toggleComments}
           className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-orange-600"
         >
-          <MessageCircle size={18} />
-          Comments
+         <MessageCircle size={18} />
+{Number(review.comment_count || 0)} Comments
         </button>
       </div>
 
@@ -578,11 +590,22 @@ export default function ReviewFeed() {
     }
 
     try {
-      await api.post('/comments', {
+          await api.post('/comments', {
         review_id: reviewId,
         parent_comment_id: parentId,
         body,
       })
+
+      setReviews((previous) =>
+        previous.map((review) =>
+          review.id === reviewId
+            ? {
+                ...review,
+                comment_count: Number(review.comment_count || 0) + 1,
+              }
+            : review
+        )
+      )
 
       await loadComments(reviewId)
     } catch (err) {
@@ -600,8 +623,14 @@ export default function ReviewFeed() {
         const updateTree = (items) =>
           items.map((item) => ({
             ...item,
-            body: item.id === commentId ? body : item.body,
-            is_edited: item.id === commentId ? 1 : item.is_edited,
+            body:
+              Number(item.id) === Number(commentId)
+                ? body
+                : item.body,
+            is_edited:
+              Number(item.id) === Number(commentId)
+                ? 1
+                : item.is_edited,
             replies: updateTree(item.replies || []),
           }))
 
@@ -619,10 +648,22 @@ export default function ReviewFeed() {
     }
   }
 
-  const handleDeleteComment = async (commentId) => {
+
+    const handleDeleteComment = async (commentId) => {
     if (!window.confirm('Are you sure you want to delete this comment?')) {
       return
     }
+
+    const containsComment = (items) =>
+      items.some(
+        (item) =>
+          Number(item.id) === Number(commentId) ||
+          containsComment(item.replies || [])
+      )
+
+    const affectedReviewId = Object.entries(comments).find(
+      ([, items]) => containsComment(items)
+    )?.[0]
 
     try {
       await api.delete(`/comments/${commentId}`)
@@ -632,11 +673,11 @@ export default function ReviewFeed() {
           items.map((item) => ({
             ...item,
             body:
-              item.id === commentId
+              Number(item.id) === Number(commentId)
                 ? 'This comment was deleted.'
                 : item.body,
             status:
-              item.id === commentId
+              Number(item.id) === Number(commentId)
                 ? 'removed'
                 : item.status,
             replies: updateTree(item.replies || []),
@@ -649,13 +690,28 @@ export default function ReviewFeed() {
           ])
         )
       })
+
+      if (affectedReviewId) {
+        setReviews((previous) =>
+          previous.map((review) =>
+            Number(review.id) === Number(affectedReviewId)
+              ? {
+                  ...review,
+                  comment_count: Math.max(
+                    0,
+                    Number(review.comment_count || 0) - 1
+                  ),
+                }
+              : review
+          )
+        )
+      }
     } catch (err) {
       window.alert(
         err.response?.data?.message || 'Could not delete comment.'
       )
     }
   }
-
   const handleCreateReview = () => {
     if (!currentUserId) {
       navigate('/login')

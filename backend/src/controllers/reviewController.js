@@ -267,11 +267,17 @@ END AS user_id,
           END AS reviewer_name,
           f.name AS food_item_name,
           s.name AS shop_name,
-          (
+                   (
             SELECT COUNT(*)
             FROM review_reactions rr
             WHERE rr.review_id = r.id
-          ) AS like_count
+          ) AS like_count,
+        (
+  SELECT COUNT(*)
+  FROM comments c
+  WHERE c.review_id = r.id
+    AND c.status = 'published'
+) AS comment_count
        FROM reviews r
        JOIN users u ON u.id = r.user_id
        JOIN food_items f ON f.id = r.food_item_id
@@ -541,11 +547,12 @@ async function getReviewReaction(req, res) {
     }
 
     const [reviews] = await pool.execute(
-      `SELECT id
-       FROM reviews
-       WHERE id = ? AND status = 'published'`,
-      [reviewId]
-    );
+  `SELECT r.id, s.owner_id
+   FROM reviews r
+   JOIN shops s ON s.id = r.shop_id
+   WHERE r.id = ? AND r.status = 'published'`,
+  [reviewId]
+);
 
     if (reviews.length === 0) {
       return res.status(404).json({
@@ -601,13 +608,14 @@ async function toggleReviewReaction(req, res) {
 
     // Lock the review row so simultaneous toggle requests
     // for this review are processed safely.
-    const [reviews] = await connection.execute(
-      `SELECT id
-       FROM reviews
-       WHERE id = ? AND status = 'published'
-       FOR UPDATE`,
-      [reviewId]
-    );
+  const [reviews] = await connection.execute(
+  `SELECT r.id, s.owner_id
+   FROM reviews r
+   JOIN shops s ON s.id = r.shop_id
+   WHERE r.id = ? AND r.status = 'published'
+   FOR UPDATE`,
+  [reviewId]
+);
 
     if (reviews.length === 0) {
       await connection.rollback();
@@ -617,6 +625,17 @@ async function toggleReviewReaction(req, res) {
         message: "Review not found."
       });
     }
+    if (
+  req.user.role === "shop_owner" &&
+  Number(reviews[0].owner_id) !== Number(req.user.id)
+) {
+  await connection.rollback();
+
+  return res.status(403).json({
+    success: false,
+    message: "You can only react to reviews of your own shop."
+  });
+}
 
     const [existingReaction] = await connection.execute(
       `SELECT user_id

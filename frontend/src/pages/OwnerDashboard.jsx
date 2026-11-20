@@ -2,8 +2,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Star,
+   Star,
   MessageSquare,
+  MessageCircle,
+  Heart,
+  Send,
   Utensils,
   Store,
   Clock,
@@ -46,6 +49,11 @@ export default function OwnerDashboard() {
   const [totalReviews, setTotalReviews] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [likedReviews, setLikedReviews] = useState({})
+const [comments, setComments] = useState({})
+const [loadedComments, setLoadedComments] = useState([])
+const [commentTexts, setCommentTexts] = useState({})
+const [expandedComments, setExpandedComments] = useState([])
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -94,7 +102,42 @@ export default function OwnerDashboard() {
         const loadedReviews = reviewResponse.data.reviews || []
         const loadedFoodItems = foodResponse.data.foodItems || []
 
-        setReviews(loadedReviews)
+        const reactionResults = await Promise.all(
+  loadedReviews.map(async (review) => {
+    try {
+      const response = await api.get(`/reviews/${review.id}/reaction`)
+
+      return {
+        reviewId: review.id,
+        isLiked: response.data.is_liked,
+        likeCount: Number(response.data.like_count || 0),
+      }
+    } catch {
+      return {
+        reviewId: review.id,
+        isLiked: false,
+        likeCount: Number(review.like_count || 0),
+      }
+    }
+  })
+)
+
+const reactionMap = Object.fromEntries(
+  reactionResults.map((item) => [item.reviewId, item])
+)
+
+setLikedReviews(
+  Object.fromEntries(
+    reactionResults.map((item) => [item.reviewId, item.isLiked])
+  )
+)
+
+setReviews(
+  loadedReviews.map((review) => ({
+    ...review,
+    like_count: reactionMap[review.id]?.likeCount || 0,
+  }))
+)
 
         setTotalReviews(
           Number(
@@ -115,7 +158,90 @@ export default function OwnerDashboard() {
 
     fetchDashboard()
   }, [])
+const handleLike = async (reviewId) => {
+  try {
+    const response = await api.post(`/reviews/${reviewId}/reaction`)
 
+    setLikedReviews((previous) => ({
+      ...previous,
+      [reviewId]: response.data.is_liked,
+    }))
+
+    setReviews((previous) =>
+      previous.map((review) =>
+        review.id === reviewId
+          ? { ...review, like_count: response.data.like_count }
+          : review
+      )
+    )
+  } catch (err) {
+    window.alert(
+      err.response?.data?.message || 'Could not update like.'
+    )
+  }
+}
+
+const loadComments = async (reviewId) => {
+  try {
+    const response = await api.get(`/comments/review/${reviewId}`)
+
+    setComments((previous) => ({
+      ...previous,
+      [reviewId]: response.data.comments || [],
+    }))
+
+    setLoadedComments((previous) =>
+      previous.includes(reviewId)
+        ? previous
+        : [...previous, reviewId]
+    )
+  } catch (err) {
+    window.alert(
+      err.response?.data?.message || 'Could not load comments.'
+    )
+  }
+}
+
+const handleAddComment = async (reviewId) => {
+  const body = (commentTexts[reviewId] || '').trim()
+
+  if (!body) return
+
+  try {
+    await api.post('/comments', {
+      review_id: reviewId,
+      body,
+    })
+    await api.post('/comments', {
+  review_id: reviewId,
+  body,
+})
+
+    setCommentTexts((previous) => ({
+      ...previous,
+      [reviewId]: '',
+    }))
+
+    await loadComments(reviewId)
+  } catch (err) {
+    window.alert(
+      err.response?.data?.message || 'Could not add comment.'
+    )
+  }
+}
+const toggleComments = (reviewId) => {
+  const isExpanded = expandedComments.includes(reviewId)
+
+  setExpandedComments((previous) =>
+    isExpanded
+      ? previous.filter((id) => id !== reviewId)
+      : [...previous, reviewId]
+  )
+
+  if (!isExpanded && !loadedComments.includes(reviewId)) {
+    loadComments(reviewId)
+  }
+}
   const totalFoodRatings = foodItems.reduce(
     (total, item) => total + Number(item.rating_count || 0),
     0
@@ -405,6 +531,101 @@ export default function OwnerDashboard() {
                       <Clock size={14} />
                       {formatTime(review.created_at)}
                     </div>
+                    {/* Like and Comment Actions */}
+<div className="mt-4 flex items-center gap-4">
+  <button
+    type="button"
+    onClick={() => handleLike(review.id)}
+    className={`flex items-center gap-2 text-sm font-medium transition ${
+      likedReviews[review.id]
+        ? 'text-rose-600'
+        : 'text-gray-500 hover:text-rose-600'
+    }`}
+  >
+    <Heart
+      size={17}
+      className={likedReviews[review.id] ? 'fill-current' : ''}
+    />
+    {Number(review.like_count || 0)} Likes
+  </button>
+
+  <button
+    type="button"
+    onClick={() => toggleComments(review.id)}
+    className="flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-blue-600"
+  >
+    <MessageCircle size={17} />
+   {expandedComments.includes(review.id)
+  ? 'Hide Comments'
+  : `${Number(review.comment_count || 0)} Comments`}
+  </button>
+</div>
+{/* Comments Section */}
+{expandedComments.includes(review.id) && (
+  <div className="mt-4 border-t border-gray-100 pt-4">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        handleAddComment(review.id)
+      }}
+      className="flex items-center gap-2"
+    >
+      <input
+        type="text"
+        value={commentTexts[review.id] || ''}
+        onChange={(e) =>
+          setCommentTexts((previous) => ({
+            ...previous,
+            [review.id]: e.target.value,
+          }))
+        }
+        placeholder="Write a comment..."
+        className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
+      />
+
+      <button
+        type="submit"
+        disabled={!(commentTexts[review.id] || '').trim()}
+        className="rounded-lg bg-orange-500 p-2 text-white hover:bg-orange-600 disabled:opacity-50"
+      >
+        <Send size={17} />
+      </button>
+    </form>
+
+    <div className="mt-4 space-y-3">
+      {(comments[review.id] || []).map((comment) => (
+        <div key={comment.id} className="rounded-lg bg-gray-50 p-3">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-gray-800">
+              {comment.user_name}
+            </p>
+
+            {comment.is_shop_owner && (
+              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                Shop Owner
+              </span>
+            )}
+          </div>
+
+          <p className={`mt-1 text-sm text-gray-600 ${comment.is_shop_owner ? 'font-bold' : ''}`}>
+            {comment.body}
+          </p>
+
+          {(comment.replies || []).map((reply) => (
+            <div key={reply.id} className="ml-5 mt-3 border-l-2 border-gray-200 pl-3">
+              <p className="text-sm font-semibold text-gray-800">
+                {reply.user_name}
+              </p>
+              <p className={`mt-1 text-sm text-gray-600 ${reply.is_shop_owner ? 'font-bold' : ''}`}>
+                {reply.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
                   </div>
                 ))}
               </div>
