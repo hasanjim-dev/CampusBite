@@ -17,10 +17,11 @@ import BackButton from '../../components/common/BackButton'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({
-    users: null,
-    shops: null,
-  })
+const [stats, setStats] = useState({
+  users: null,
+  shops: null,
+  reviews: null,
+})
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -36,19 +37,21 @@ export default function AdminDashboard() {
         throw new Error('Admin authentication token not found.')
       }
 
-      const [usersResponse, shopsResponse] = await Promise.all([
-        axios.get(`${API_URL}/admin/users?page=1&limit=1`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-        axios.get(`${API_URL}/shops`),
-      ])
+      const [usersResponse, shopsResponse, reviewsResponse] = await Promise.all([
+  axios.get(`${API_URL}/admin/users?page=1&limit=1`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }),
+  axios.get(`${API_URL}/shops`),
+  axios.get(`${API_URL}/reviews?page=1&limit=1`),
+])
 
-      setStats({
-        users: usersResponse.data.pagination?.totalUsers ?? 0,
-        shops: shopsResponse.data.total ?? shopsResponse.data.shops?.length ?? 0,
-      })
+     setStats({
+  users: usersResponse.data.pagination?.totalUsers ?? 0,
+  shops: shopsResponse.data.total ?? shopsResponse.data.shops?.length ?? 0,
+  reviews: reviewsResponse.data.pagination?.total ?? 0,
+})
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -77,13 +80,12 @@ export default function AdminDashboard() {
       icon: Store,
       color: 'orange',
     },
-    {
-      label: 'Total Reviews',
-      value: '—',
-      icon: MessageSquare,
-      color: 'green',
-      unavailable: true,
-    },
+   {
+  label: 'Total Reviews',
+  value: stats.reviews,
+  icon: MessageSquare,
+  color: 'green',
+},
     {
       label: 'Active Events',
       value: '—',
@@ -218,34 +220,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="bg-gray-900 text-white rounded-2xl p-6">
-          <div className="bg-white/10 w-12 h-12 rounded-xl flex items-center justify-center">
-            <TrendingUp size={25} />
-          </div>
-
-          <h2 className="text-xl font-bold mt-6">
-            CampusBite Insights
-          </h2>
-
-          <p className="text-sm text-gray-300 mt-2 leading-6">
-            Manage students, monitor shop registrations and maintain a healthy
-            campus food community.
-          </p>
-
-          <div className="border-t border-white/15 mt-7 pt-5 space-y-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-300">Dashboard status</span>
-              <span className="text-green-400 font-semibold">
-                {error ? 'Connection issue' : loading ? 'Loading' : 'Ready'}
-              </span>
-            </div>
-
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-300">Live data sources</span>
-              <span className="font-bold">2</span>
-            </div>
-          </div>
-        </div>
+    
       </div>
     </div>
   )
