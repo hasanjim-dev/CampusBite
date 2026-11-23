@@ -42,7 +42,30 @@ END AS user_id,
     [reviewId]
   );
 
-  return rows[0] || null;
+  if (rows.length === 0) {
+  return null;
+}
+
+const review = rows[0];
+
+// Get all images attached to this review
+const [images] = await pool.execute(
+  `SELECT image_url
+   FROM review_images
+   WHERE review_id = ?
+   ORDER BY sort_order ASC, id ASC`,
+  [reviewId]
+);
+
+// Keep backward compatibility with old reviews
+review.image_urls =
+  images.length > 0
+    ? images.map((image) => image.image_url)
+    : review.image_url
+      ? [review.image_url]
+      : [];
+
+return review;
 }
 
 // ==========================================
@@ -51,7 +74,7 @@ END AS user_id,
 // ==========================================
 async function createReview(req, res) {
   try {
-    const { food_item_id, rating, body, image_url, is_anonymous } = req.body;
+    const { food_item_id, rating, body, is_anonymous } = req.body;
 
     if (!food_item_id || !Number.isInteger(Number(food_item_id)) ||
         Number(food_item_id) <= 0) {
@@ -85,21 +108,32 @@ async function createReview(req, res) {
       });
     }
 
-    if (image_url !== undefined && image_url !== null &&
-        (typeof image_url !== "string" || image_url.length > 500)) {
-      return res.status(400).json({
-        success: false,
-        message: "Image URL must be a string of maximum 500 characters."
-      });
-    }
+   const imageUrls = Array.isArray(req.body.image_urls)
+  ? req.body.image_urls
+  : [];
 
-    if (is_anonymous !== undefined &&
-        ![true, false, 0, 1].includes(is_anonymous)) {
-      return res.status(400).json({
-        success: false,
-        message: "is_anonymous must be true or false."
-      });
-    }
+if (
+  imageUrls.length > 3 ||
+  imageUrls.some(
+    (imageUrl) =>
+      typeof imageUrl !== "string" || imageUrl.length > 500
+  )
+) {
+  return res.status(400).json({
+    success: false,
+    message: "You can upload a maximum of 3 valid images."
+  });
+}
+
+   if (
+  is_anonymous !== undefined &&
+  ![true, false, 0, 1, "true", "false", "0", "1"].includes(is_anonymous)
+) {
+  return res.status(400).json({
+    success: false,
+    message: "is_anonymous must be true or false."
+  });
+}
 
     // Get the shop ID from the actual food item.
     // Never trust shop_id sent by the client.
@@ -118,22 +152,38 @@ async function createReview(req, res) {
     }
 
     const shopId = foodItems[0].shop_id;
-    const anonymous = is_anonymous === true || is_anonymous === 1 ? 1 : 0;
+   const anonymous =
+  is_anonymous === true ||
+  is_anonymous === 1 ||
+  is_anonymous === "true" ||
+  is_anonymous === "1"
+    ? 1
+    : 0;
 
-    const [result] = await pool.execute(
-      `INSERT INTO reviews
-       (user_id, shop_id, food_item_id, rating, body, image_url, is_anonymous)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        req.user.id,
-        shopId,
-        Number(food_item_id),
-        numericRating,
-        body.trim(),
-        image_url || null,
-        anonymous
-      ]
-    );
+   const [result] = await pool.execute(
+  `INSERT INTO reviews
+   (user_id, shop_id, food_item_id, rating, body, image_url, is_anonymous)
+   VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  [
+    req.user.id,
+    shopId,
+    Number(food_item_id),
+    numericRating,
+    body.trim(),
+    imageUrls[0] || null,
+    anonymous
+  ]
+);
+
+// Save all uploaded review images
+for (let index = 0; index < imageUrls.length; index += 1) {
+  await pool.execute(
+    `INSERT INTO review_images
+     (review_id, image_url, sort_order)
+     VALUES (?, ?, ?)`,
+    [result.insertId, imageUrls[index], index]
+  );
+}
         // Notify shop owner about the new review
     try {
       const [shops] = await pool.execute(
@@ -298,6 +348,38 @@ END AS user_id,
     );
 
     const total = countRows[0].total;
+    // Get images for all reviews in the current page
+if (reviews.length > 0) {
+  const reviewIds = reviews.map((review) => review.id);
+  const placeholders = reviewIds.map(() => "?").join(",");
+
+  const [reviewImages] = await pool.execute(
+    `SELECT review_id, image_url
+     FROM review_images
+     WHERE review_id IN (${placeholders})
+     ORDER BY sort_order ASC, id ASC`,
+    reviewIds
+  );
+
+  const imagesByReview = {};
+
+  for (const image of reviewImages) {
+    if (!imagesByReview[image.review_id]) {
+      imagesByReview[image.review_id] = [];
+    }
+
+    imagesByReview[image.review_id].push(image.image_url);
+  }
+
+  for (const review of reviews) {
+    review.image_urls =
+      imagesByReview[review.id] && imagesByReview[review.id].length > 0
+        ? imagesByReview[review.id]
+        : review.image_url
+          ? [review.image_url]
+          : [];
+  }
+}
 
     return res.status(200).json({
       success: true,
@@ -374,14 +456,18 @@ async function updateReview(req, res) {
       });
     }
 
-    const { rating, body, image_url, is_anonymous } = req.body;
+   const { rating, body, is_anonymous } = req.body;
 
-    if (
-      rating === undefined &&
-      body === undefined &&
-      image_url === undefined &&
-      is_anonymous === undefined
-    ) {
+const imageUrls = Array.isArray(req.body.image_urls)
+  ? req.body.image_urls
+  : [];
+
+   if (
+  rating === undefined &&
+  body === undefined &&
+  imageUrls.length === 0 &&
+  is_anonymous === undefined
+) {
       return res.status(400).json({
         success: false,
         message: "Provide at least one field to update."
@@ -433,30 +519,29 @@ async function updateReview(req, res) {
       params.push(body.trim());
     }
 
-    if (image_url !== undefined) {
-      if (image_url !== null &&
-          (typeof image_url !== "string" || image_url.length > 500)) {
-        return res.status(400).json({
-          success: false,
-          message: "Image URL must be null or a string of maximum 500 characters."
-        });
-      }
+    
 
-      updates.push("image_url = ?");
-      params.push(image_url || null);
-    }
+ if (is_anonymous !== undefined) {
+  if (
+    ![true, false, 0, 1, "true", "false", "0", "1"].includes(is_anonymous)
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "is_anonymous must be true or false."
+    });
+  }
 
-    if (is_anonymous !== undefined) {
-      if (![true, false, 0, 1].includes(is_anonymous)) {
-        return res.status(400).json({
-          success: false,
-          message: "is_anonymous must be true or false."
-        });
-      }
+  updates.push("is_anonymous = ?");
 
-      updates.push("is_anonymous = ?");
-      params.push(is_anonymous === true || is_anonymous === 1 ? 1 : 0);
-    }
+  params.push(
+    is_anonymous === true ||
+    is_anonymous === 1 ||
+    is_anonymous === "true" ||
+    is_anonymous === "1"
+      ? 1
+      : 0
+  );
+}
 
     updates.push("is_edited = 1");
 
@@ -466,7 +551,43 @@ async function updateReview(req, res) {
        WHERE id = ? AND user_id = ?`,
       [...params, reviewId, req.user.id]
     );
+// Replace old images only when new images are uploaded
+if (imageUrls.length > 0) {
+  if (
+    imageUrls.length > 3 ||
+    imageUrls.some(
+      (imageUrl) =>
+        typeof imageUrl !== "string" || imageUrl.length > 500
+    )
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "You can upload a maximum of 3 valid images."
+    });
+  }
 
+  // Remove previous image records
+  await pool.execute(
+    "DELETE FROM review_images WHERE review_id = ?",
+    [reviewId]
+  );
+
+  // Save newly uploaded images
+  for (let index = 0; index < imageUrls.length; index += 1) {
+    await pool.execute(
+      `INSERT INTO review_images
+       (review_id, image_url, sort_order)
+       VALUES (?, ?, ?)`,
+      [reviewId, imageUrls[index], index]
+    );
+  }
+
+  // Keep the first image in the legacy column
+  await pool.execute(
+    "UPDATE reviews SET image_url = ? WHERE id = ?",
+    [imageUrls[0], reviewId]
+  );
+}
     const review = await getReviewDetails(reviewId);
 
     return res.status(200).json({

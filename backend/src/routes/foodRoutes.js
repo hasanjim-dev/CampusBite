@@ -1,7 +1,8 @@
-
+﻿
 const express = require("express");
 const authMiddleware = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
+const { uploadSingleImage } = require("../middleware/imageUpload");
 
 const {
   createFoodItem,
@@ -24,6 +25,7 @@ router.post(
   "/",
   authMiddleware,
   authorizeRoles("shop_owner"),
+  uploadSingleImage,
   createFoodItem
 );
 
@@ -32,6 +34,7 @@ router.put(
   "/:id",
   authMiddleware,
   authorizeRoles("shop_owner"),
+  uploadSingleImage,
   updateFoodItem
 );
 
@@ -44,3 +47,5 @@ router.delete(
 );
 
 module.exports = router;
+
+

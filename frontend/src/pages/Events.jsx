@@ -12,7 +12,18 @@ import {
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '')
+  .replace(/\/api\/?$/, '')
 
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return ''
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl
+  }
+
+  return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+}
 export default function Events() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -438,7 +449,7 @@ const handleDeleteEvent = async (event) => {
             >
               {event.image_url ? (
                 <img
-                  src={event.image_url}
+                  src={getImageUrl(event.image_url)}
                   alt={event.name}
                   className="w-full h-48 object-cover"
                 />

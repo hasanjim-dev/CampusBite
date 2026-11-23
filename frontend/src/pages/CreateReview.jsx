@@ -22,7 +22,17 @@ export default function CreateReview() {
   const [hoverRating, setHoverRating] = useState(0)
   const [review, setReview] = useState('')
   const [anonymous, setAnonymous] = useState(false)
-  const [imageUrl, setImageUrl] = useState('')
+const [images, setImages] = useState([])
+const [imagePreviews, setImagePreviews] = useState([])
+useEffect(() => {
+  const previews = images.map((file) => URL.createObjectURL(file))
+
+  setImagePreviews(previews)
+
+  return () => {
+    previews.forEach((url) => URL.revokeObjectURL(url))
+  }
+}, [images])
   const [loadingShops, setLoadingShops] = useState(true)
   const [loadingFoods, setLoadingFoods] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -79,7 +89,38 @@ export default function CreateReview() {
       cancelled = true
     }
   }, [shop])
+const handleImageChange = (e) => {
+  const selectedFiles = Array.from(e.target.files || [])
 
+  if (selectedFiles.length > 3) {
+    toast.error('You can select a maximum of 3 images')
+    e.target.value = ''
+    return
+  }
+
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+  ]
+
+  for (const file of selectedFiles) {
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only JPG, JPEG, PNG and WEBP images are allowed')
+      e.target.value = ''
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Each image must be 5 MB or smaller')
+      e.target.value = ''
+      return
+    }
+  }
+
+  setImages(selectedFiles)
+  e.target.value = ''
+}
   const handleSubmit = async (e) => {
     e.preventDefault()
 
@@ -103,25 +144,22 @@ export default function CreateReview() {
       return
     }
 
-    if (imageUrl.trim()) {
-      try {
-        new URL(imageUrl.trim())
-      } catch {
-        toast.error('Please enter a valid image URL')
-        return
-      }
-    }
-
+    
     setSubmitting(true)
 
     try {
-      await api.post('/reviews', {
-        food_item_id: Number(food),
-        rating,
-        body: review.trim(),
-        image_url: imageUrl.trim() || null,
-        is_anonymous: anonymous
-      })
+     const formData = new FormData()
+
+formData.append('food_item_id', String(Number(food)))
+formData.append('rating', String(rating))
+formData.append('body', review.trim())
+formData.append('is_anonymous', anonymous ? '1' : '0')
+
+images.forEach((file) => {
+  formData.append('images', file)
+})
+
+await api.post('/reviews', formData)
 
       toast.success('Review submitted successfully!')
       navigate(`/shops/${shop}`)
@@ -277,18 +315,51 @@ export default function CreateReview() {
           </div>
 
           <div>
-            <label className="mb-2 block font-semibold text-gray-800">
-              Food Image URL <span className="font-normal text-gray-400">(Optional)</span>
-            </label>
+  <label className="mb-2 block font-semibold text-gray-800">
+    Food Photos
+    <span className="font-normal text-gray-400">
+      {' '}(Optional, maximum 3)
+    </span>
+  </label>
 
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://example.com/food-image.jpg"
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-            />
-          </div>
+  <input
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    multiple
+    onChange={handleImageChange}
+    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-orange-500"
+  />
+
+  <p className="mt-2 text-xs text-gray-500">
+    JPG, JPEG, PNG or WEBP. Maximum 5 MB per image.
+  </p>
+
+  {imagePreviews.length > 0 && (
+    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {imagePreviews.map((preview, index) => (
+        <div key={preview} className="relative">
+          <img
+            src={preview}
+            alt={`Review preview ${index + 1}`}
+            className="h-32 w-full rounded-lg object-cover"
+          />
+
+          <button
+            type="button"
+            onClick={() =>
+              setImages((current) =>
+                current.filter((_, imageIndex) => imageIndex !== index)
+              )
+            }
+            className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs font-semibold text-white hover:bg-black"
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
           <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-gray-50 p-4">
             <input

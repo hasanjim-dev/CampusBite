@@ -1,10 +1,12 @@
-
+﻿
 const express = require("express");
 const router = express.Router();
 
 const reviewController = require("../controllers/reviewController");
 const authMiddleware = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
+const { uploadReviewImages } = require("../middleware/imageUpload");
+
 
 // Public routes
 router.get("/", reviewController.getAllReviews);
@@ -15,6 +17,7 @@ router.post(
   "/",
   authMiddleware,
   authorizeRoles("student"),
+  uploadReviewImages,
   reviewController.createReview
 );
 
@@ -22,6 +25,7 @@ router.put(
   "/:id",
   authMiddleware,
   authorizeRoles("student"),
+  uploadReviewImages,
   reviewController.updateReview
 );
 
@@ -47,3 +51,5 @@ router.post(
 );
 
 module.exports = router;
+
+

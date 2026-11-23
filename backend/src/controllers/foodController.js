@@ -12,6 +12,8 @@ async function createFoodItem(req, res) {
       price,
       discount_percent = 0
     } = req.body;
+    const numericPrice = Number(price);
+const numericDiscount = Number(discount_percent ?? 0);
 
     // Validate required name
     if (typeof name !== "string" || !name.trim()) {
@@ -56,11 +58,10 @@ async function createFoodItem(req, res) {
 
     // Validate original price
     if (
-      typeof price !== "number" ||
-      !Number.isFinite(price) ||
-      price <= 0 ||
-      price > 99999999.99 ||
-      Math.round(price * 100) !== price * 100
+     !Number.isFinite(numericPrice) ||
+numericPrice <= 0 ||
+numericPrice > 99999999.99 ||
+Math.round(numericPrice * 100) !== numericPrice * 100
     ) {
       return res.status(400).json({
         success: false,
@@ -70,11 +71,10 @@ async function createFoodItem(req, res) {
 
     // Validate discount percentage
     if (
-      typeof discount_percent !== "number" ||
-      !Number.isFinite(discount_percent) ||
-      discount_percent < 0 ||
-      discount_percent > 100 ||
-      Math.round(discount_percent * 100) !== discount_percent * 100
+  !Number.isFinite(numericDiscount) ||
+numericDiscount < 0 ||
+numericDiscount > 100 ||
+Math.round(numericDiscount * 100) !== numericDiscount * 100
     ) {
       return res.status(400).json({
         success: false,
@@ -110,13 +110,13 @@ async function createFoodItem(req, res) {
        (shop_id, name, description, image_url, price, discount_percent)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        shopId,
-        cleanName,
-        description?.trim() || null,
-        image_url?.trim() || null,
-        price,
-        discount_percent
-      ]
+  shopId,
+  cleanName,
+  description?.trim() || null,
+  image_url?.trim() || null,
+  numericPrice,
+  numericDiscount
+]
     );
     // Notify active students who favorited this shop
     try {
@@ -457,6 +457,13 @@ async function updateFoodItem(req, res) {
       discount_percent,
       is_available
     } = req.body;
+   const numericPrice =
+  price === undefined ? undefined : Number(price);
+
+const numericDiscount =
+  discount_percent === undefined
+    ? undefined
+    : Number(discount_percent);
 
     const updates = [];
     const values = [];
@@ -521,12 +528,11 @@ async function updateFoodItem(req, res) {
     // Update original price
     if (price !== undefined) {
       if (
-        typeof price !== "number" ||
-        !Number.isFinite(price) ||
-        price <= 0 ||
-        price > 99999999.99 ||
-        Math.round(price * 100) !== price * 100
-      ) {
+  !Number.isFinite(numericPrice) ||
+  numericPrice <= 0 ||
+  numericPrice > 99999999.99 ||
+  Math.round(numericPrice * 100) !== numericPrice * 100
+) {
         return res.status(400).json({
           success: false,
           message: "Price must be positive with maximum 2 decimal places."
@@ -534,18 +540,17 @@ async function updateFoodItem(req, res) {
       }
 
       updates.push("price = ?");
-      values.push(price);
+      values.push(numericPrice);
     }
 
     // Update discount percentage
     if (discount_percent !== undefined) {
-      if (
-        typeof discount_percent !== "number" ||
-        !Number.isFinite(discount_percent) ||
-        discount_percent < 0 ||
-        discount_percent > 100 ||
-        Math.round(discount_percent * 100) !== discount_percent * 100
-      ) {
+    if (
+  !Number.isFinite(numericDiscount) ||
+  numericDiscount < 0 ||
+  numericDiscount > 100 ||
+  Math.round(numericDiscount * 100) !== numericDiscount * 100
+) {
         return res.status(400).json({
           success: false,
           message: "Discount must be between 0 and 100 with maximum 2 decimal places."
@@ -553,7 +558,7 @@ async function updateFoodItem(req, res) {
       }
 
       updates.push("discount_percent = ?");
-      values.push(discount_percent);
+      values.push(numericDiscount);
     }
 
     // Update availability

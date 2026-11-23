@@ -14,7 +14,18 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../api/axios'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '')
+  .replace(/\/api\/?$/, '')
 
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return ''
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl
+  }
+
+  return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+}
 export default function Favorites() {
   const navigate = useNavigate()
 
@@ -204,7 +215,7 @@ export default function Favorites() {
                 <div className="relative flex h-48 items-center justify-center overflow-hidden bg-orange-50">
                   {item.image ? (
                     <img
-                      src={item.image}
+                      src={getImageUrl(item.image)}
                       alt={item.name}
                       className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                     />

@@ -1,7 +1,8 @@
-
+﻿
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const path = require("path");
 
 const userRoutes = require("./routes/userRoutes");
 const shopRoutes = require("./routes/shopRoutes");
@@ -18,6 +19,9 @@ const eventRoutes = require("./routes/eventRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express();
+
+// Serve uploaded images
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Security middleware
 app.use(
@@ -72,3 +76,4 @@ app.use("/api/announcements", announcementRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/notifications", notificationRoutes);
 module.exports = app;
+

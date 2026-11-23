@@ -16,9 +16,35 @@ import {
 import BackButton from '../../components/common/BackButton'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const API_BASE_URL = API_URL.replace(/\/api\/?$/, '')
+
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return ''
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl
+  }
+
+  return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+}
 
 export default function ManageShops() {
   const [shops, setShops] = useState([])
+  const [logoFile, setLogoFile] = useState(null)
+const [logoPreview, setLogoPreview] = useState('')
+useEffect(() => {
+  if (!logoFile) {
+    setLogoPreview('')
+    return
+  }
+
+  const preview = URL.createObjectURL(logoFile)
+  setLogoPreview(preview)
+
+  return () => {
+    URL.revokeObjectURL(preview)
+  }
+}, [logoFile])
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
   const [selectedShop, setSelectedShop] = useState(null)
@@ -215,7 +241,7 @@ if (selectedShop?.id === shop.id) {
                 <div className="flex items-start justify-between">
                   {shop.logo_url ? (
                     <img
-                      src={shop.logo_url}
+                      src={getImageUrl(shop.logo_url)}
                       alt={shop.name}
                       className="w-14 h-14 rounded-xl object-cover"
                     />

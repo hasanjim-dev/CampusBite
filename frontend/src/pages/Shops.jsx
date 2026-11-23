@@ -16,7 +16,18 @@ import {
 import api from '../api/axios'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '')
+  .replace(/\/api\/?$/, '')
 
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return ''
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl
+  }
+
+  return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+}
 function ShopCard({
   shop,
   isFavorite,
@@ -31,7 +42,7 @@ function ShopCard({
       <div className="relative flex h-52 items-center justify-center overflow-hidden bg-gradient-to-br from-orange-100 to-orange-50">
         {shop.logo_url ? (
           <img
-            src={shop.logo_url}
+          src={getImageUrl(shop.logo_url)}
             alt={shop.name}
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           />

@@ -12,6 +12,7 @@ const {
 
 const authMiddleware = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
+const { uploadSingleImage } = require("../middleware/imageUpload");
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ router.post(
   "/",
   authMiddleware,
   authorizeRoles("admin"),
+  uploadSingleImage,
   createEvent
 );
 
@@ -34,6 +36,7 @@ router.put(
   "/:id",
   authMiddleware,
   authorizeRoles("admin"),
+  uploadSingleImage,
   updateEvent
 );
 
@@ -62,3 +65,5 @@ router.post(
 );
 
 module.exports = router;
+
+
