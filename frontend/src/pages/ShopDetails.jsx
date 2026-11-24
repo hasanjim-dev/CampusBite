@@ -13,7 +13,18 @@ import {
   AlertCircle
 } from 'lucide-react'
 import api from '../api/axios'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '')
+  .replace(/\/api\/?$/, '')
 
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return ''
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl
+  }
+
+  return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+}
 function ShopDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -118,7 +129,7 @@ function ShopDetails() {
         <div className="h-48 md:h-64 bg-gradient-to-r from-orange-400 to-orange-600 flex items-center justify-center">
           {shop.logo_url ? (
             <img
-              src={shop.logo_url}
+             src={getImageUrl(shop.logo_url)}
               alt={shop.name}
               className="w-full h-full object-cover"
             />
@@ -219,7 +230,7 @@ function ShopDetails() {
                   <div className="h-48 bg-orange-50 flex items-center justify-center overflow-hidden">
                     {item.image_url ? (
                       <img
-                        src={item.image_url}
+                       src={getImageUrl(item.image_url)}
                         alt={item.name}
                         className="w-full h-full object-cover"
                       />
@@ -337,13 +348,16 @@ function ShopDetails() {
                   {review.body}
                 </p>
 
-                {review.image_url && (
-                  <img
-                    src={review.image_url}
-                    alt="Review"
-                    className="mt-4 w-40 h-32 rounded-lg object-cover"
-                  />
-                )}
+              {(review.image_urls || (review.image_url ? [review.image_url] : [])).map(
+  (imageUrl, index) => (
+    <img
+      key={index}
+    src={getImageUrl(imageUrl)}
+      alt={`Review ${index + 1}`}
+      className="mt-4 w-40 h-32 rounded-lg object-cover"
+    />
+  )
+)}
 
                 <div className="flex justify-between items-center mt-4 text-xs text-gray-400">
                   <span>{formatDate(review.created_at)}</span>

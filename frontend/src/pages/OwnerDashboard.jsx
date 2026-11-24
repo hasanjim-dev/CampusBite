@@ -19,6 +19,19 @@ import {
 import api from '../api/axios'
 import ComplaintList from '../components/common/ComplaintList'
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '')
+  .replace(/\/api\/?$/, '')
+
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return ''
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl
+  }
+
+  return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+}
+
 function formatTime(date) {
   if (!date) return ''
 
@@ -427,7 +440,7 @@ const toggleComments = (reviewId) => {
 
             {shop.logo_url && (
               <img
-                src={shop.logo_url}
+              src={getImageUrl(shop.logo_url)}
                 alt={shop.name}
                 className="mt-5 h-40 w-full rounded-xl object-cover"
               />

@@ -19,7 +19,18 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '')
+  .replace(/\/api\/?$/, '')
 
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return ''
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl
+  }
+
+  return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+}
 function formatTime(date) {
   if (!date) return ''
 
@@ -270,6 +281,12 @@ function ReviewCard({
   }
 
   const name = review.reviewer_name || 'Anonymous'
+  const reviewImages =
+  Array.isArray(review.image_urls) && review.image_urls.length > 0
+    ? review.image_urls
+    : review.image_url
+      ? [review.image_url]
+      : []
 
   return (
     <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6">
@@ -336,16 +353,21 @@ function ReviewCard({
         {review.body}
       </p>
 
-      {review.image_url && (
-        <img
-          src={review.image_url}
-          alt="Review"
-          className="mt-4 max-h-72 w-full rounded-xl object-cover"
-          onError={(event) => {
-            event.currentTarget.style.display = 'none'
-          }}
-        />
-      )}
+      {reviewImages.length > 0 && (
+  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+    {reviewImages.map((imageUrl, index) => (
+      <img
+        key={`${review.id}-${index}`}
+        src={getImageUrl(imageUrl)}
+        alt={`Review image ${index + 1}`}
+        className="max-h-72 w-full rounded-xl object-cover"
+        onError={(event) => {
+          event.currentTarget.style.display = 'none'
+        }}
+      />
+    ))}
+  </div>
+)}
 
       <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
         <button

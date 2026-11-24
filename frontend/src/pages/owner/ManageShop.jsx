@@ -14,7 +14,18 @@ import {
 } from 'lucide-react'
 import BackButton from '../../components/common/BackButton'
 import api from '../../api/axios'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '')
+  .replace(/\/api\/?$/, '')
 
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return ''
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl
+  }
+
+  return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+}
 const emptyShop = {
   name: '',
   description: '',
@@ -26,7 +37,23 @@ const emptyShop = {
 }
 
 export default function ManageShop() {
-  const [shop, setShop] = useState(emptyShop)
+const [shop, setShop] = useState(emptyShop)
+const [logoFile, setLogoFile] = useState(null)
+const [logoPreview, setLogoPreview] = useState('')
+
+useEffect(() => {
+  if (!logoFile) {
+    setLogoPreview('')
+    return
+  }
+
+  const preview = URL.createObjectURL(logoFile)
+  setLogoPreview(preview)
+
+  return () => {
+    URL.revokeObjectURL(preview)
+  }
+}, [logoFile])
   const [shopId, setShopId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -70,7 +97,32 @@ export default function ManageShop() {
     const { name, value } = event.target
     setShop((previous) => ({ ...previous, [name]: value }))
   }
+const handleLogoChange = (event) => {
+  const file = event.target.files?.[0]
 
+  if (!file) return
+
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+  ]
+
+  if (!allowedTypes.includes(file.type)) {
+    toast.error('Only JPG, JPEG, PNG and WEBP images are allowed.')
+    event.target.value = ''
+    return
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error('Logo image must be 5 MB or smaller.')
+    event.target.value = ''
+    return
+  }
+
+  setLogoFile(file)
+  event.target.value = ''
+}
   const handleSubmit = async (event) => {
     event.preventDefault()
 
@@ -81,19 +133,22 @@ export default function ManageShop() {
 
     setSaving(true)
 
-    const payload = {
-      name: shop.name.trim(),
-      description: shop.description.trim(),
-      location: shop.location.trim(),
-      contact_phone: shop.contact_phone.trim(),
-      contact_email: shop.contact_email.trim(),
-      opening_hours: shop.opening_hours.trim(),
-      logo_url: shop.logo_url.trim(),
+     const formData = new FormData()
+
+    formData.append('name', shop.name.trim())
+    formData.append('description', shop.description.trim())
+    formData.append('location', shop.location.trim())
+    formData.append('contact_phone', shop.contact_phone.trim())
+    formData.append('contact_email', shop.contact_email.trim())
+    formData.append('opening_hours', shop.opening_hours.trim())
+
+    if (logoFile) {
+      formData.append('image', logoFile)
     }
 
     try {
       if (shopId) {
-        const response = await api.put('/shops/my-shop', payload)
+        const response = await api.put('/shops/my-shop', formData)
         const updated = response.data.shop
 
         setShopId(updated.id)
@@ -109,7 +164,7 @@ export default function ManageShop() {
 
         toast.success('Shop information updated successfully.')
       } else {
-        const response = await api.post('/shops', payload)
+       const response = await api.post('/shops', formData)
         const created = response.data.shop
 
         setShopId(created.id)
@@ -280,31 +335,31 @@ export default function ManageShop() {
             />
           </div>
 
-          <div className="md:col-span-2">
-            <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
-              <ImagePlus size={16} /> Shop Logo/Image URL
-            </label>
-            <input
-              name="logo_url"
-              type="url"
-              value={shop.logo_url}
-              onChange={handleChange}
-              placeholder="https://example.com/shop.jpg"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-orange-500"
-            />
-          </div>
+         <div className="md:col-span-2">
+  <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
+    <ImagePlus size={16} /> Shop Logo
+  </label>
+
+  <input
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    onChange={handleLogoChange}
+    className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-orange-500"
+  />
+
+  <p className="mt-2 text-xs text-gray-500">
+    JPG, JPEG, PNG or WEBP. Maximum 5 MB.
+  </p>
+</div>
         </div>
 
-        {shop.logo_url && (
-          <img
-            src={shop.logo_url}
-            alt="Shop preview"
-            onError={(event) => {
-              event.currentTarget.style.display = 'none'
-            }}
-            className="max-h-56 w-full rounded-xl object-cover"
-          />
-        )}
+       {(logoPreview || shop.logo_url) && (
+  <img
+   src={logoPreview || getImageUrl(shop.logo_url)}
+    alt="Shop logo preview"
+    className="max-h-56 w-full rounded-xl object-cover"
+  />
+)}
 
         <div className="flex justify-end border-t pt-5">
           <button

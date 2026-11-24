@@ -13,7 +13,18 @@ import {
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '')
+  .replace(/\/api\/?$/, '')
 
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return ''
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl
+  }
+
+  return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+}
 export default function EventDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -198,7 +209,7 @@ export default function EventDetails() {
 
         {event.image_url ? (
           <img
-            src={event.image_url}
+          src={getImageUrl(event.image_url)}
             alt={event.name}
             className="h-64 w-full object-cover sm:h-96"
           />
@@ -364,7 +375,7 @@ export default function EventDetails() {
 
                   {shop.logo_url ? (
                     <img
-                      src={shop.logo_url}
+                      src={getImageUrl(shop.logo_url)}
                       alt={shop.name}
                       className="w-14 h-14 rounded-full object-cover"
                     />

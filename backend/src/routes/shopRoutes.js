@@ -1,7 +1,8 @@
-const express = require("express");
+﻿const express = require("express");
 
 const authMiddleware = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
+const { uploadShopLogo } = require("../middleware/imageUpload");
 
 const {
   createShop,
@@ -25,6 +26,7 @@ router.put(
   "/my-shop",
   authMiddleware,
   authorizeRoles("shop_owner"),
+ uploadShopLogo,
   updateMyShop
 );
 // GET ALL PUBLIC SHOPS - Everyone
@@ -41,7 +43,9 @@ router.post(
   "/",
   authMiddleware,
   authorizeRoles("shop_owner"),
+  uploadShopLogo,
   createShop
 );
 
 module.exports = router;
+

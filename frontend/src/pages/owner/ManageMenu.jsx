@@ -13,7 +13,18 @@ import {
 } from 'lucide-react'
 import BackButton from '../../components/common/BackButton'
 import api from '../../api/axios'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '')
+  .replace(/\/api\/?$/, '')
 
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return ''
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl
+  }
+
+  return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+}
 const emptyForm = {
   name: '',
   description: '',
@@ -384,7 +395,7 @@ export default function ManageMenu() {
             >
               {item.image_url ? (
                 <img
-                  src={item.image_url}
+                  src={getImageUrl(item.image_url)}
                   alt={item.name}
                   onError={(event) => {
                     event.currentTarget.style.display = 'none'
