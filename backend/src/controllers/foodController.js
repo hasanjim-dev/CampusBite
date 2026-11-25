@@ -1,4 +1,4 @@
-
+﻿
 const pool = require("../config/db");
 const { notifyUsers } = require("../services/notificationService");
 
@@ -563,9 +563,13 @@ const numericDiscount =
 
     // Update availability
     if (is_available !== undefined) {
-      if (
-        ![0, 1, true, false].includes(is_available)
-      ) {
+      const normalizedAvailability =
+        is_available === true || is_available === "true" ? 1 :
+        is_available === false || is_available === "false" ? 0 :
+        is_available === "1" || is_available === 1 ? 1 :
+        is_available === "0" || is_available === 0 ? 0 : null;
+
+      if (normalizedAvailability === null) {
         return res.status(400).json({
           success: false,
           message: "Availability must be true, false, 1 or 0."
@@ -573,9 +577,7 @@ const numericDiscount =
       }
 
       updates.push("is_available = ?");
-      values.push(
-        is_available === true || is_available === 1 ? 1 : 0
-      );
+      values.push(normalizedAvailability);
     }
 
     if (updates.length === 0) {
