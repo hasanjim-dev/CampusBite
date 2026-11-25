@@ -47,6 +47,21 @@ export default function Events() {
     image_url: ''
   })
 
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState('')
+
+  useEffect(() => {
+    if (imageFile) {
+      const previewUrl = URL.createObjectURL(imageFile)
+      setImagePreview(previewUrl)
+
+      return () => URL.revokeObjectURL(previewUrl)
+    }
+
+    setImagePreview(
+      formData.image_url ? getImageUrl(formData.image_url) : ''
+    )
+  }, [imageFile, formData.image_url])
   const fetchEvents = async () => {
     try {
       setLoading(true)
@@ -87,49 +102,60 @@ export default function Events() {
     try {
       setSubmitting(true)
 
-      const payload = {
-        ...formData,
-        start_time: formData.start_time || null,
-        end_time: formData.end_time || null,
-        location: formData.location.trim(),
-        description: formData.description.trim(),
-        image_url: formData.image_url.trim()
+      const payload = new FormData()
+      payload.append('name', formData.name.trim())
+      payload.append('event_date', formData.event_date)
+      payload.append('location', formData.location.trim())
+      payload.append('description', formData.description.trim())
+
+      if (formData.start_time) {
+        payload.append('start_time', formData.start_time)
+      }
+
+      if (formData.end_time) {
+        payload.append('end_time', formData.end_time)
+      }
+
+      if (imageFile) {
+        payload.append('image', imageFile)
       }
 
       const response = editingEventId
-  ? await api.put(`/events/${editingEventId}`, payload)
-  : await api.post('/events', payload)
+        ? await api.put(`/events/${editingEventId}`, payload)
+        : await api.post('/events', payload)
 
       if (response.data.success) {
-  alert(
-    editingEventId
-      ? 'Event updated successfully!'
-      : 'Event created successfully!'
-  )
+        alert(
+          editingEventId
+            ? 'Event updated successfully!'
+            : 'Event created successfully!'
+        )
 
-  setFormData({
-    name: '',
-    event_date: '',
-    start_time: '',
-    end_time: '',
-    location: '',
-    description: '',
-    image_url: ''
-  })
+        setFormData({
+          name: '',
+          event_date: '',
+          start_time: '',
+          end_time: '',
+          location: '',
+          description: '',
+          image_url: ''
+        })
 
-  setEditingEventId(null)
-  setShowForm(false)
-  await fetchEvents()
-}
+        setImageFile(null)
+        setEditingEventId(null)
+        setShowForm(false)
+        await fetchEvents()
+      }
     } catch (err) {
       alert(
-        err.response?.data?.message || 'Failed to create event.'
+        err.response?.data?.message || 'Failed to save event.'
       )
     } finally {
       setSubmitting(false)
     }
   }
 const handleEditEvent = (event) => {
+  setImageFile(null)
   setEditingEventId(event.id)
 
   setFormData({
@@ -346,17 +372,53 @@ const handleDeleteEvent = async (event) => {
 
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold mb-2">
-                Event Image URL
+                Event Image
               </label>
+
               <input
-                type="url"
-                name="image_url"
-                value={formData.image_url}
-                onChange={handleInputChange}
-                maxLength={500}
-                placeholder="https://example.com/event-image.jpg"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+
+                  if (!file) return
+
+                  const allowedTypes = [
+                    'image/jpeg',
+                    'image/png',
+                    'image/webp'
+                  ]
+
+                  if (!allowedTypes.includes(file.type)) {
+                    alert('Only JPG, JPEG, PNG and WEBP images are allowed.')
+                    e.target.value = ''
+                    return
+                  }
+
+                  if (file.size > 5 * 1024 * 1024) {
+                    alert('Image size cannot exceed 5 MB.')
+                    e.target.value = ''
+                    return
+                  }
+
+                  setImageFile(file)
+                }}
                 className="w-full border rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-orange-400"
               />
+
+              <p className="text-xs text-gray-500 mt-2">
+                JPG, JPEG, PNG or WEBP. Maximum size: 5 MB.
+              </p>
+
+              {imagePreview && (
+                <div className="mt-4">
+                  <img
+                    src={imagePreview}
+                    alt="Event preview"
+                    className="w-full max-w-md h-52 object-cover rounded-xl border"
+                  />
+                </div>
+              )}
             </div>
 
           </div>
@@ -378,6 +440,7 @@ const handleDeleteEvent = async (event) => {
     <button
       type="button"
       onClick={() => {
+        setImageFile(null)
         setEditingEventId(null)
         setShowForm(false)
 
