@@ -1,4 +1,4 @@
-﻿
+
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
@@ -40,6 +40,20 @@ export default function ManageMenu() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(emptyForm)
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState('')
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview('')
+      return
+    }
+
+    const previewUrl = URL.createObjectURL(imageFile)
+    setImagePreview(previewUrl)
+
+    return () => URL.revokeObjectURL(previewUrl)
+  }, [imageFile])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [pageError, setPageError] = useState('')
@@ -131,6 +145,7 @@ export default function ManageMenu() {
   const openAddForm = () => {
     setEditingId(null)
     setForm(emptyForm)
+    setImageFile(null)
     setShowForm(true)
   }
 
@@ -144,6 +159,7 @@ export default function ManageMenu() {
       discount_percent: String(item.discount_percent ?? 0),
       is_available: Number(item.is_available) === 1 || item.is_available === true,
     })
+    setImageFile(null)
     setShowForm(true)
   }
 
@@ -167,13 +183,16 @@ export default function ManageMenu() {
       return
     }
 
-    const payload = {
-      name: form.name.trim(),
-      description: form.description.trim(),
-      image_url: form.image_url.trim() || null,
-      price: Number(form.price),
-      discount_percent: discount,
-      is_available: form.is_available,
+    const payload = new FormData()
+
+    payload.append('name', form.name.trim())
+    payload.append('description', form.description.trim())
+    payload.append('price', String(Number(form.price)))
+    payload.append('discount_percent', String(discount))
+    payload.append('is_available', form.is_available ? '1' : '0')
+
+    if (imageFile) {
+      payload.append('image', imageFile)
     }
 
     try {
@@ -190,6 +209,7 @@ export default function ManageMenu() {
       setShowForm(false)
       setEditingId(null)
       setForm(emptyForm)
+      setImageFile(null)
       await fetchMenu()
     } catch (error) {
       toast.error(
@@ -583,20 +603,51 @@ export default function ManageMenu() {
               </div>
 
               <div>
-                <label className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                  <ImagePlus size={16} />
-                  Image URL
-                </label>
+  <label className="mb-2 flex items-center gap-2 text-sm font-semibold">
+    <ImagePlus size={16} />
+    Food Image
+  </label>
 
-                <input
-                  type="url"
-                  name="image_url"
-                  value={form.image_url}
-                  onChange={handleChange}
-                  placeholder="https://example.com/food.jpg"
-                  className="w-full rounded-xl border px-4 py-3 outline-none focus:border-orange-500"
-                />
-              </div>
+  <input
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    onChange={(event) => {
+      const file = event.target.files?.[0] || null
+      if (!file) return
+
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Only JPG, JPEG, PNG and WEBP images are allowed.')
+        event.target.value = ''
+        return
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image must be 5 MB or smaller.')
+        event.target.value = ''
+        return
+      }
+
+      setImageFile(file)
+    }}
+    className="w-full rounded-xl border px-4 py-3"
+  />
+
+  {imagePreview ? (
+    <img
+      src={imagePreview}
+      alt="Selected food preview"
+      className="mt-3 h-40 w-full rounded-xl object-cover"
+    />
+  ) : form.image_url ? (
+    <img
+      src={getImageUrl(form.image_url)}
+      alt="Current food image"
+      className="mt-3 h-40 w-full rounded-xl object-cover"
+    />
+  ) : null}
+</div>
 
               <label className="flex items-center gap-3 text-sm font-medium text-gray-700">
                 <input
