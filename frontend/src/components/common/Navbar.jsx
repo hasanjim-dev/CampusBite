@@ -9,6 +9,7 @@ import {
   Star,
   UtensilsCrossed,
   UserCircle,
+  Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -75,19 +76,27 @@ export default function Navbar() {
         <Link
           to="/"
           onClick={closeMenus}
-          className="group flex shrink-0 items-center gap-2"
+          className="group flex shrink-0 items-center gap-3"
         >
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500 text-white shadow-md shadow-orange-200 transition-transform duration-200 group-hover:scale-105">
-            <UtensilsCrossed size={23} />
+          <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 text-white shadow-lg shadow-orange-200/70 transition-all duration-300 group-hover:-rotate-6 group-hover:scale-110 group-hover:shadow-orange-300/80">
+            <UtensilsCrossed size={23} strokeWidth={2.3} />
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-amber-300">
+              <Sparkles size={8} className="text-orange-800" />
+            </span>
           </div>
 
           <div className="flex flex-col">
-            <span className="text-xl font-extrabold tracking-tight text-gray-900 sm:text-2xl">
+            <span className="text-[23px] font-black leading-none tracking-[-1.2px] text-gray-900 transition-colors duration-200 group-hover:text-orange-600 sm:text-[25px]">
               Campus<span className="text-orange-500">Bite</span>
+              <span className="ml-0.5 align-top text-[9px] font-bold tracking-normal text-orange-500">®</span>
             </span>
-            <span className="hidden text-[10px] font-medium tracking-[2px] text-gray-400 sm:block">
-              CAMPUS FOOD COMMUNITY
-            </span>
+
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <span className="h-[2px] w-4 rounded-full bg-orange-500" />
+              <span className="text-[9px] font-bold uppercase tracking-[2px] text-gray-400 sm:text-[10px]">
+                Campus Food Community
+              </span>
+            </div>
           </div>
         </Link>
 
