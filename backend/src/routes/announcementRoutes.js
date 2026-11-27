@@ -1,4 +1,3 @@
-
 const express = require("express");
 
 const {
@@ -7,16 +6,25 @@ const {
   getAnnouncementById,
   getMyAnnouncements,
   updateAnnouncement,
-  deleteAnnouncement
+  deleteAnnouncement,
+  getAnnouncementAttachment
 } = require("../controllers/announcementController");
 
 const authMiddleware = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
 
+const {
+  uploadAnnouncementAttachments
+} = require("../middleware/announcementUpload");
+
 const router = express.Router();
 
-// SHOP OWNER: Get own announcements
-// Keep this route before /:id
+const announcementViewAccess = [
+  authMiddleware,
+  authorizeRoles("student", "shop_owner", "admin")
+];
+
+// Shop owner: View own announcements
 router.get(
   "/my-announcements",
   authMiddleware,
@@ -24,33 +32,49 @@ router.get(
   getMyAnnouncements
 );
 
-// PUBLIC: Get all published announcements
-router.get("/", getAllAnnouncements);
+// Authenticated users: View attachments
+router.get(
+  "/attachments/:attachmentId",
+  ...announcementViewAccess,
+  getAnnouncementAttachment
+);
 
-// PUBLIC: Get one published announcement
-router.get("/:id", getAnnouncementById);
+// Authenticated users: View published announcements
+router.get(
+  "/",
+  ...announcementViewAccess,
+  getAllAnnouncements
+);
 
-// SHOP OWNER: Create announcement
+router.get(
+  "/:id",
+  ...announcementViewAccess,
+  getAnnouncementById
+);
+
+// Shop owner: Create announcement
 router.post(
   "/",
   authMiddleware,
   authorizeRoles("shop_owner"),
+  uploadAnnouncementAttachments,
   createAnnouncement
 );
 
-// SHOP OWNER: Update own announcement
+// Shop owner: Update own announcement
 router.put(
   "/:id",
   authMiddleware,
   authorizeRoles("shop_owner"),
+  uploadAnnouncementAttachments,
   updateAnnouncement
 );
 
-// SHOP OWNER: Delete own announcement
+// Shop owner or Admin: Delete announcement
 router.delete(
   "/:id",
   authMiddleware,
-  authorizeRoles("shop_owner"),
+  authorizeRoles("shop_owner", "admin"),
   deleteAnnouncement
 );
 

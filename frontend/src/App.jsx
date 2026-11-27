@@ -1,4 +1,4 @@
-
+﻿
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 
@@ -17,6 +17,7 @@ import Register from './pages/auth/Register'
 import Shops from './pages/Shops'
 import ShopDetails from './pages/ShopDetails'
 import Events from './pages/Events'
+import Announcements from './pages/Announcements'
 import EventDetails from './pages/EventDetails'
 
 import CreateReview from './pages/CreateReview'
@@ -67,6 +68,17 @@ export default function App() {
             <Route path="/events/:id" element={<EventDetails />} />
           </Route>
 
+
+          {/* Protected Announcement Route */}
+          <Route
+            element={
+              <ProtectedRoute allowedRoles={['student', 'shop_owner', 'admin']}>
+                <PublicLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/announcements" element={<Announcements />} />
+          </Route>
           {/* Student Routes */}
           <Route
             element={
@@ -122,3 +134,4 @@ export default function App() {
     </BrowserRouter>
   )
 }
+
