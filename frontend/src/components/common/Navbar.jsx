@@ -6,7 +6,6 @@ import {
   X,
   LogOut,
   ChevronDown,
-  Star,
   UtensilsCrossed,
   UserCircle,
   Home,
@@ -59,6 +58,9 @@ export default function Navbar() {
   const [shopsMenuOpen, setShopsMenuOpen] = useState(false)
 
   const links = [
+    ...(user
+      ? [{ to: '/announcements', label: 'Announcements', icon: Bell }]
+      : []),
     ...publicLinks,
     ...(roleLinks[user?.role] || []),
   ]
@@ -426,3 +428,4 @@ export default function Navbar() {
     </nav>
   )
 }
+
