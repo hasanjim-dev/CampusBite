@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -864,15 +863,20 @@ export default function ReviewFeed() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-9 pb-12">
-      <section className="relative isolate overflow-hidden rounded-[2rem] bg-gradient-to-br from-orange-600 via-orange-500 to-amber-400 px-6 py-10 text-white shadow-xl shadow-orange-600/10 sm:px-10 sm:py-14 lg:px-14">
+      {/* HERO SECTION */}
+      <section className="relative isolate overflow-hidden rounded-[2rem] bg-gradient-to-br from-orange-700 via-orange-600 to-amber-500 px-6 py-10 text-white shadow-2xl shadow-orange-900/20 sm:px-10 sm:py-14 lg:px-14">
         <div className="pointer-events-none absolute -right-20 -top-24 h-80 w-80 rounded-full border-[40px] border-white/10" />
-        <div className="pointer-events-none absolute -bottom-36 right-1/4 h-72 w-72 rounded-full bg-white/10 blur-2xl" />
+
+        <div className="pointer-events-none absolute -bottom-36 right-1/4 h-72 w-72 rounded-full bg-amber-300/20 blur-2xl" />
+
+        <div className="pointer-events-none absolute -left-20 -bottom-32 h-72 w-72 rounded-full bg-red-900/10 blur-3xl" />
+
         <div className="pointer-events-none absolute right-10 top-1/2 hidden -translate-y-1/2 rotate-12 text-white/10 lg:block">
           <Utensils size={190} strokeWidth={1} />
         </div>
 
         <div className="relative z-10 max-w-2xl">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-4 py-2 text-xs font-bold tracking-wide text-white backdrop-blur-sm">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-xs font-bold tracking-wide text-white backdrop-blur-sm">
             <Sparkles size={14} />
             YOUR CAMPUS FOOD COMMUNITY
           </span>
@@ -892,7 +896,7 @@ export default function ReviewFeed() {
             <button
               type="button"
               onClick={handleCreateReview}
-              className="inline-flex items-center gap-2.5 rounded-xl bg-white px-5 py-3.5 text-sm font-extrabold text-orange-700 shadow-lg shadow-orange-900/10 transition hover:-translate-y-0.5 hover:bg-orange-50"
+              className="inline-flex items-center gap-2.5 rounded-xl bg-white px-5 py-3.5 text-sm font-extrabold text-orange-800 shadow-lg shadow-orange-950/15 transition hover:-translate-y-0.5 hover:bg-orange-50"
             >
               <Plus size={19} />
               Write a Review
@@ -910,10 +914,12 @@ export default function ReviewFeed() {
             <Star size={14} className="fill-current" />
             Honest ratings
           </span>
+
           <span className="flex items-center gap-2">
             <MessageCircle size={14} />
             Community discussions
           </span>
+
           <span className="flex items-center gap-2">
             <Utensils size={14} />
             Campus food discovery
@@ -921,10 +927,11 @@ export default function ReviewFeed() {
         </div>
       </section>
 
+      {/* REVIEWS HEADER */}
       <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
-          <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.18em] text-orange-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+          <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.18em] text-orange-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-600" />
             CampusBite Community
           </p>
 
@@ -932,7 +939,7 @@ export default function ReviewFeed() {
             Latest Food Reviews
           </h2>
 
-          <p className="mt-2 text-sm leading-6 text-gray-500">
+          <p className="mt-2 text-sm leading-6 text-gray-600">
             Discover what your campus community is talking about.
           </p>
         </div>
@@ -964,6 +971,7 @@ export default function ReviewFeed() {
         </div>
       </section>
 
+      {/* REVIEW LIST */}
       <section className="space-y-5">
         {loading ? (
           <>
@@ -1048,6 +1056,7 @@ export default function ReviewFeed() {
         )}
       </section>
 
+      {/* BOTTOM CALL TO ACTION */}
       <section className="relative overflow-hidden rounded-3xl border border-orange-100 bg-gradient-to-r from-orange-50 via-white to-amber-50 p-6 sm:p-8">
         <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-orange-100/60 blur-2xl" />
 
@@ -1062,7 +1071,7 @@ export default function ReviewFeed() {
               Tried something delicious?
             </h3>
 
-            <p className="mt-2 text-sm leading-6 text-gray-500">
+            <p className="mt-2 text-sm leading-6 text-gray-600">
               Your review could help another student discover their next
               favourite meal.
             </p>
