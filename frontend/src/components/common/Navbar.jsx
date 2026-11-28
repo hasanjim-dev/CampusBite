@@ -1,4 +1,4 @@
-
+﻿
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
@@ -23,6 +23,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { getImageUrl } from '../../utils/imageUrl'
 
 const publicLinks = [
   { to: '/', label: 'Reviews', icon: Home },
@@ -207,8 +208,12 @@ export default function Navbar() {
           {user ? (
             <>
               <div className="flex max-w-40 items-center gap-2.5 rounded-full border border-gray-100 bg-gray-50 px-3 py-2">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
-                  <UserCircle size={19} />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-100 text-orange-600">
+                  {user.avatar_url ? (
+                    <img src={getImageUrl(user.avatar_url)} alt="Profile" className="h-full w-full object-cover" />
+                  ) : (
+                    <UserCircle size={19} />
+                  )}
                 </div>
 
                 <div className="min-w-0">
@@ -373,8 +378,12 @@ export default function Navbar() {
                 {user ? (
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-100 text-orange-600">
-                        <UserCircle size={23} />
+                      <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-orange-100 text-orange-600">
+                        {user.avatar_url ? (
+                          <img src={getImageUrl(user.avatar_url)} alt="Profile" className="h-full w-full object-cover" />
+                        ) : (
+                          <UserCircle size={23} />
+                        )}
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -428,4 +437,5 @@ export default function Navbar() {
     </nav>
   )
 }
+
 

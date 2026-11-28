@@ -1,5 +1,5 @@
-
-import { useEffect, useState } from 'react'
+﻿
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
@@ -16,9 +16,12 @@ import {
   CalendarDays,
 } from 'lucide-react'
 import api from '../api/axios'
+import { useAuth } from '../context/AuthContext'
+import { getImageUrl } from '../utils/imageUrl'
 
 export default function Profile() {
   const navigate = useNavigate()
+  const { updateUser } = useAuth()
 
   const [profile, setProfile] = useState({
     id: '',
@@ -33,6 +36,8 @@ export default function Profile() {
   const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [previewImage, setPreviewImage] = useState('')
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -44,16 +49,21 @@ export default function Profile() {
   const [showPasswordForm, setShowPasswordForm] = useState(false)
 
   useEffect(() => {
-    fetchProfile()
-  }, [])
+    return () => {
+      if (previewImage.startsWith('blob:')) {
+        URL.revokeObjectURL(previewImage)
+      }
+    }
+  }, [previewImage])
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       setLoading(true)
 
       const response = await api.get('/users/me')
 
       const user = response.data.user
+      updateUser(user)
 
       setProfile({
         id: user.id,
@@ -71,13 +81,39 @@ export default function Profile() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [updateUser])
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchProfile()
+  }, [fetchProfile])
   const handleChange = (e) => {
     setProfile((current) => ({
       ...current,
       [e.target.name]: e.target.value,
     }))
+  }
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only JPG, PNG and WEBP images are allowed.')
+      e.target.value = ''
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Profile image must be 5 MB or smaller.')
+      e.target.value = ''
+      return
+    }
+
+    setSelectedImage(file)
+    setPreviewImage(URL.createObjectURL(file))
   }
 
   const handleSave = async () => {
@@ -89,12 +125,17 @@ export default function Profile() {
     try {
       setSaving(true)
 
-      const response = await api.put('/users/me', {
-        name: profile.name.trim(),
-        avatar_url: profile.avatar_url.trim() || null,
-      })
+      const formData = new FormData()
+      formData.append('name', profile.name.trim())
 
+      if (selectedImage) {
+        formData.append('image', selectedImage)
+      }
+
+      const response = await api.put('/users/me', formData)
       const user = response.data.user
+
+      updateUser(user)
 
       setProfile((current) => ({
         ...current,
@@ -105,6 +146,8 @@ export default function Profile() {
         avatar_url: user.avatar_url || '',
       }))
 
+      setSelectedImage(null)
+      setPreviewImage('')
       setEditing(false)
       toast.success('Profile updated successfully.')
     } catch (error) {
@@ -117,9 +160,12 @@ export default function Profile() {
   }
 
   const handleCancel = () => {
+    setSelectedImage(null)
+    setPreviewImage('')
     fetchProfile()
     setEditing(false)
   }
+
 
   const handlePasswordChange = (e) => {
     setPasswordForm((current) => ({
@@ -229,9 +275,9 @@ export default function Profile() {
         <div className="px-6 pb-8 sm:px-9">
           <div className="-mt-16 flex flex-wrap items-end justify-between gap-5">
             <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-orange-100 shadow-sm">
-              {profile.avatar_url ? (
+              {previewImage || profile.avatar_url ? (
                 <img
-                  src={profile.avatar_url}
+                  src={previewImage || getImageUrl(profile.avatar_url)}
                   alt="Profile"
                   className="h-full w-full object-cover"
                   onError={(e) => {
@@ -364,26 +410,30 @@ export default function Profile() {
           {editing && (
             <div className="sm:col-span-2">
               <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Profile Image URL
+                Profile Photo
               </label>
 
-              <div className="relative">
-                <Camera
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:border-orange-400 hover:bg-orange-50">
+                  <Camera size={18} className="text-orange-500" />
+                  Choose Photo
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
 
-                <input
-                  type="url"
-                  name="avatar_url"
-                  value={profile.avatar_url}
-                  onChange={handleChange}
-                  placeholder="https://example.com/profile.jpg"
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-800 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                />
+                {selectedImage && (
+                  <span className="text-sm text-gray-500">
+                    {selectedImage.name}
+                  </span>
+                )}
               </div>
-              <p className="mt-1 text-xs text-gray-400">
-                Enter a publicly accessible image URL.
+
+              <p className="mt-2 text-xs text-gray-400">
+                JPG, PNG or WEBP. Maximum file size: 5 MB.
               </p>
             </div>
           )}
@@ -505,3 +555,4 @@ export default function Profile() {
     </div>
   )
 }
+

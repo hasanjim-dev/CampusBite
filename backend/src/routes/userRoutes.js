@@ -1,8 +1,9 @@
-
+﻿
 const express = require("express");
 
 
 const authMiddleware = require("../middleware/authMiddleware");
+const { uploadSingleImage } = require("../middleware/imageUpload");
 const authorizeRoles = require("../middleware/roleMiddleware");
 const {
   getMyProfile,
@@ -13,7 +14,7 @@ const router = express.Router();
 
 // Protected route: login token is required
 router.get("/me", authMiddleware, getMyProfile);
-router.put("/me", authMiddleware, updateMyProfile);
+router.put("/me", authMiddleware, uploadSingleImage, updateMyProfile);
 router.put("/change-password", authMiddleware, changePassword);
 
 router.get(
@@ -31,3 +32,4 @@ router.get(
 
 
 module.exports = router;
+

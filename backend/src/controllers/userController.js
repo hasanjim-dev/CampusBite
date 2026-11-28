@@ -1,4 +1,4 @@
-
+﻿
 const pool = require("../config/db");
   const bcrypt = require("bcryptjs");
 
@@ -50,17 +50,18 @@ async function getMyProfile(req, res) {
 // PUT: Update logged-in user's profile
 async function updateMyProfile(req, res) {
   try {
-    const { name, avatar_url } = req.body;
+    const { name, avatar_url, image_url } = req.body;
 
-    // Check whether at least one allowed field was provided
-    if (name === undefined && avatar_url === undefined) {
+    const newAvatarUrl =
+      image_url !== undefined ? image_url : avatar_url;
+
+    if (name === undefined && newAvatarUrl === undefined) {
       return res.status(400).json({
         success: false,
-        message: "Please provide a name or avatar URL to update."
+        message: "Please provide a name or profile image to update."
       });
     }
 
-    // Validate name
     if (
       name !== undefined &&
       (typeof name !== "string" ||
@@ -73,21 +74,19 @@ async function updateMyProfile(req, res) {
       });
     }
 
-    // Validate avatar URL
     if (
-      avatar_url !== undefined &&
-      avatar_url !== null &&
-      (typeof avatar_url !== "string" ||
-       avatar_url.trim().length === 0 ||
-       avatar_url.trim().length > 500)
+      newAvatarUrl !== undefined &&
+      newAvatarUrl !== null &&
+      (typeof newAvatarUrl !== "string" ||
+       newAvatarUrl.trim().length === 0 ||
+       newAvatarUrl.trim().length > 500)
     ) {
       return res.status(400).json({
         success: false,
-        message: "Avatar URL must be a valid non-empty string up to 500 characters, or null."
+        message: "Profile image path is invalid."
       });
     }
 
-    // Prepare only allowed fields
     const fields = [];
     const values = [];
 
@@ -96,12 +95,13 @@ async function updateMyProfile(req, res) {
       values.push(name.trim());
     }
 
-    if (avatar_url !== undefined) {
+    if (newAvatarUrl !== undefined) {
       fields.push("avatar_url = ?");
-      values.push(avatar_url === null ? null : avatar_url.trim());
+      values.push(
+        newAvatarUrl === null ? null : newAvatarUrl.trim()
+      );
     }
 
-    // Update only the authenticated user's record
     values.push(req.user.id);
 
     const [result] = await pool.execute(
@@ -118,7 +118,6 @@ async function updateMyProfile(req, res) {
       });
     }
 
-    // Retrieve updated profile
     const [users] = await pool.execute(
       `SELECT id, name, email, role, status, avatar_url,
               created_at, updated_at
