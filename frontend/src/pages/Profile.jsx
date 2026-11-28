@@ -14,10 +14,88 @@ import {
   Lock,
   ShieldCheck,
   CalendarDays,
+  Sparkles,
+  CheckCircle2,
+  KeyRound,
+  Fingerprint,
+  ChevronRight,
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { getImageUrl } from '../utils/imageUrl'
+
+function SectionTitle({ icon: Icon, title, description }) {
+  return (
+    <div className="mb-7 flex items-start gap-3">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-500">
+        <Icon size={21} />
+      </div>
+      <div>
+        <h2 className="text-lg font-bold tracking-tight text-gray-900 sm:text-xl">
+          {title}
+        </h2>
+        <p className="mt-1 text-sm text-gray-500">{description}</p>
+      </div>
+    </div>
+  )
+}
+
+function FormField({
+  label,
+  icon: Icon,
+  value,
+  onChange,
+  name,
+  type = 'text',
+  disabled = false,
+  placeholder,
+  helper,
+  maxLength,
+  autoComplete,
+  minLength,
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-semibold text-gray-700">
+        {label}
+      </label>
+
+      <div className="relative">
+        {Icon && (
+          <Icon
+            size={18}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+        )}
+
+        <input
+          type={type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          autoComplete={autoComplete}
+          minLength={minLength}
+          className={`w-full rounded-xl border py-3.5 text-sm text-gray-800 outline-none transition-all ${
+            Icon ? 'pl-11' : 'px-4'
+          } ${
+            disabled
+              ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-500'
+              : 'border-gray-200 bg-white hover:border-orange-200 focus:border-orange-400 focus:ring-4 focus:ring-orange-100/70'
+          }`}
+        />
+      </div>
+
+      {helper && (
+        <p className="mt-2 text-xs leading-relaxed text-gray-400">
+          {helper}
+        </p>
+      )}
+    </div>
+  )
+}
 
 export default function Profile() {
   const navigate = useNavigate()
@@ -61,7 +139,6 @@ export default function Profile() {
       setLoading(true)
 
       const response = await api.get('/users/me')
-
       const user = response.data.user
       updateUser(user)
 
@@ -238,111 +315,162 @@ export default function Profile() {
     })
   }
 
+  const formattedRole = profile.role
+    ? profile.role
+        .replace('_', ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : 'CampusBite User'
+
   if (loading) {
     return (
-      <div className="flex min-h-96 flex-col items-center justify-center">
-        <LoaderCircle
-          size={40}
-          className="animate-spin text-orange-500"
-        />
-        <p className="mt-4 text-gray-500">Loading your profile...</p>
+      <div className="flex min-h-[65vh] flex-col items-center justify-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50">
+          <LoaderCircle
+            size={30}
+            className="animate-spin text-orange-500"
+          />
+        </div>
+        <p className="mt-5 text-sm font-semibold text-gray-700">
+          Loading your profile
+        </p>
+        <p className="mt-1 text-xs text-gray-400">
+          Please wait a moment...
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl pb-12">
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
+        className="group mb-6 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 shadow-sm transition-all hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
       >
-        <ArrowLeft size={18} />
+        <ArrowLeft
+          size={17}
+          className="transition-transform group-hover:-translate-x-1"
+        />
         Back
       </button>
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          My Profile
-        </h1>
-        <p className="mt-2 text-gray-500">
-          View and manage your CampusBite account information.
-        </p>
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-orange-600">
+            <Sparkles size={13} />
+            Account Settings
+          </div>
+
+          <h1 className="text-3xl font-black tracking-tight text-gray-900 sm:text-4xl">
+            My Profile<span className="text-orange-500">.</span>
+          </h1>
+
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-gray-500 sm:text-base">
+            Manage your personal information and keep your CampusBite
+            account up to date.
+          </p>
+        </div>
+
+        <div className="hidden items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-4 py-2.5 text-sm font-semibold text-green-700 sm:flex">
+          <CheckCircle2 size={17} />
+          Account Settings
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        <div className="h-36 bg-gradient-to-r from-orange-400 to-orange-600 sm:h-44" />
+      <div className="relative mb-7 overflow-hidden rounded-3xl border border-orange-100/70 bg-white shadow-sm">
+        <div className="relative h-36 overflow-hidden bg-gradient-to-br from-orange-400 via-orange-500 to-orange-700 sm:h-48">
+          <div className="absolute -right-10 -top-24 h-72 w-72 rounded-full border-[35px] border-white/10" />
+          <div className="absolute -bottom-32 right-1/4 h-64 w-64 rounded-full border-[30px] border-white/10" />
+          <div className="absolute left-8 top-8 h-16 w-16 rounded-full bg-white/10 blur-xl" />
 
-        <div className="px-6 pb-8 sm:px-9">
-          <div className="-mt-16 flex flex-wrap items-end justify-between gap-5">
-            <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-orange-100 shadow-sm">
-              {previewImage || profile.avatar_url ? (
-                <img
-                  src={previewImage || getImageUrl(profile.avatar_url)}
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
-              ) : (
-                <User size={55} className="text-orange-400" />
-              )}
+          <div className="absolute right-6 top-6 hidden items-center gap-2 rounded-full border border-white/20 bg-white/15 px-4 py-2 text-xs font-semibold text-white backdrop-blur-md sm:flex">
+            <ShieldCheck size={15} />
+            CampusBite Member
+          </div>
+        </div>
+
+        <div className="px-5 pb-7 sm:px-9">
+          <div className="-mt-14 flex flex-wrap items-end justify-between gap-4 sm:-mt-16">
+            <div className="relative">
+              <div className="relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-[28px] border-[5px] border-white bg-orange-50 shadow-lg sm:h-32 sm:w-32">
+                {previewImage || profile.avatar_url ? (
+                  <img
+                    src={previewImage || getImageUrl(profile.avatar_url)}
+                    alt="Profile"
+                    className="absolute inset-0 h-full w-full rounded-[23px] object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                ) : (
+                  <User size={52} className="text-orange-400" />
+                )}
+              </div>
+
+              <div className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-xl border-[3px] border-white bg-green-500 text-white shadow-sm">
+                <CheckCircle2 size={15} />
+              </div>
+            </div>
             </div>
 
             {!editing ? (
               <button
                 onClick={() => setEditing(true)}
-                className="flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 font-semibold text-white transition hover:bg-orange-600"
+                className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-gray-900/10 transition-all hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-orange-200"
               >
-                <Pencil size={17} />
+                <Pencil size={16} />
                 Edit Profile
               </button>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={handleCancel}
                   disabled={saving}
-                  className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
                 >
-                  <X size={17} />
+                  <X size={16} />
                   Cancel
                 </button>
 
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600 disabled:opacity-50"
                 >
                   {saving ? (
-                    <LoaderCircle size={17} className="animate-spin" />
+                    <LoaderCircle size={16} className="animate-spin" />
                   ) : (
-                    <Save size={17} />
+                    <Save size={16} />
                   )}
-                  Save
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             )}
           </div>
 
           <div className="mt-5">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {profile.name}
+            <h2 className="text-2xl font-black tracking-tight text-gray-900">
+              {profile.name || 'CampusBite User'}
             </h2>
 
-            <p className="mt-1 text-gray-500">
-              {profile.role
-                ? profile.role.replace('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
-                : 'CampusBite User'}
+            <p className="mt-1 text-sm text-gray-500">
+              {profile.email}
             </p>
 
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-4 py-1 text-sm font-semibold text-orange-600">
-                <ShieldCheck size={15} />
-                {profile.status}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3.5 py-1.5 text-xs font-bold text-orange-700">
+                <ShieldCheck size={14} />
+                {formattedRole}
               </span>
 
-              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-4 py-1 text-sm text-gray-600">
-                <CalendarDays size={15} />
+              {profile.status && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3.5 py-1.5 text-xs font-bold capitalize text-green-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  {profile.status}
+                </span>
+              )}
+
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3.5 py-1.5 text-xs font-semibold text-gray-600">
+                <CalendarDays size={14} />
                 Joined {formatDate(profile.created_at)}
               </span>
             </div>
@@ -350,207 +478,259 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="mt-7 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
-        <div className="mb-7">
-          <h2 className="text-xl font-bold text-gray-900">
-            Personal Information
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Your account information.
-          </p>
-        </div>
+      <div className="grid gap-7">
+        <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm sm:p-8">
+          <SectionTitle
+            icon={User}
+            title="Personal Information"
+            description="Your basic account details and personal information."
+          />
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Full Name
-            </label>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <FormField
+              label="Full Name"
+              icon={User}
+              name="name"
+              value={profile.name}
+              onChange={handleChange}
+              disabled={!editing}
+              maxLength={100}
+              placeholder="Enter your full name"
+            />
 
-            <div className="relative">
-              <User
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
+            <FormField
+              label="Email Address"
+              icon={Mail}
+              value={profile.email}
+              disabled
+              helper="Your registered email address cannot be changed."
+            />
 
-              <input
-                type="text"
-                name="name"
-                value={profile.name}
-                onChange={handleChange}
-                disabled={!editing}
-                maxLength={100}
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-800 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 disabled:cursor-default"
-              />
-            </div>
-          </div>
+            {editing && (
+              <div className="sm:col-span-2">
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Profile Photo
+                </label>
 
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Email Address
-            </label>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:border-orange-400 hover:bg-orange-50">
+                    <Camera size={18} className="text-orange-500" />
+                    Choose Photo
 
-            <div className="relative">
-              <Mail
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </label>
 
-              <input
-                type="email"
-                value={profile.email}
-                disabled
-                className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-100 py-3 pl-10 pr-4 text-sm text-gray-500"
-              />
-            </div>
-            <p className="mt-1 text-xs text-gray-400">
-              Email cannot be changed.
-            </p>
+                  {selectedImage && (
+                    <span className="text-sm text-gray-500">
+                      {selectedImage.name}
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-2 text-xs text-gray-400">
+                  JPG, PNG or WEBP. Maximum file size: 5 MB.
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">
+                Account ID
+              </label>
+
+            <FormField
+              label="Account ID"
+              icon={Fingerprint}
+              value={String(profile.id)}
+              disabled
+            />
+
+            <FormField
+              label="Account Role"
+              icon={ShieldCheck}
+              value={formattedRole}
+              disabled
+            />
           </div>
 
           {editing && (
-            <div className="sm:col-span-2">
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Profile Photo
-              </label>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:border-orange-400 hover:bg-orange-50">
-                  <Camera size={18} className="text-orange-500" />
-                  Choose Photo
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </label>
-
-                {selectedImage && (
-                  <span className="text-sm text-gray-500">
-                    {selectedImage.name}
-                  </span>
-                )}
+            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-orange-100 bg-orange-50/70 p-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-orange-500 shadow-sm">
+                <Sparkles size={17} />
               </div>
-
-              <p className="mt-2 text-xs text-gray-400">
-                JPG, PNG or WEBP. Maximum file size: 5 MB.
-              </p>
+              <div>
+                <p className="text-sm font-bold text-gray-800">
+                  Editing your profile
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                  Update your name or profile image URL. Your email
+                  address and account role cannot be edited here.
+                </p>
+              </div>
             </div>
           )}
+        </section>
 
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Account ID
-            </label>
+        <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+          <div className="p-5 sm:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <SectionTitle
+                icon={Lock}
+                title="Password & Security"
+                description="Protect your account with a strong password."
+              />
 
-            <input
-              type="text"
-              value={profile.id}
-              disabled
-              className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500"
-            />
+              <div className="hidden h-12 w-12 items-center justify-center rounded-2xl bg-green-50 text-green-600 sm:flex">
+                <ShieldCheck size={23} />
+              </div>
+            </div>
+
+            <div className="flex flex-col justify-between gap-4 rounded-2xl border border-gray-100 bg-gray-50/80 p-4 sm:flex-row sm:items-center sm:p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-orange-500 shadow-sm">
+                  <KeyRound size={20} />
+                </div>
+
+                <div>
+                  <p className="text-sm font-bold text-gray-800">
+                    Account Password
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Change your password to keep your account secure.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setShowPasswordForm((current) => !current)
+                }
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-orange-200 bg-white px-4 py-2.5 text-sm font-bold text-orange-600 transition hover:bg-orange-50"
+              >
+                <Lock size={16} />
+                {showPasswordForm ? 'Close Form' : 'Change Password'}
+                <ChevronRight
+                  size={16}
+                  className={`transition-transform ${
+                    showPasswordForm ? 'rotate-90' : ''
+                  }`}
+                />
+              </button>
+            </div>
+
+            {showPasswordForm && (
+              <form
+                onSubmit={handleChangePassword}
+                className="mt-6 space-y-5 rounded-2xl border border-orange-100 bg-orange-50/30 p-4 sm:p-6"
+              >
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">
+                    Update Your Password
+                  </h3>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Enter your current password and choose a new one.
+                  </p>
+                </div>
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <FormField
+                      label="Current Password"
+                      icon={Lock}
+                      type="password"
+                      name="currentPassword"
+                      value={passwordForm.currentPassword}
+                      onChange={handlePasswordChange}
+                      autoComplete="current-password"
+                      placeholder="Enter current password"
+                    />
+                  </div>
+
+                  <FormField
+                    label="New Password"
+                    icon={KeyRound}
+                    type="password"
+                    name="newPassword"
+                    value={passwordForm.newPassword}
+                    onChange={handlePasswordChange}
+                    autoComplete="new-password"
+                    minLength={8}
+                    placeholder="Minimum 8 characters"
+                  />
+
+                  <FormField
+                    label="Confirm New Password"
+                    icon={ShieldCheck}
+                    type="password"
+                    name="confirmPassword"
+                    value={passwordForm.confirmPassword}
+                    onChange={handlePasswordChange}
+                    autoComplete="new-password"
+                    minLength={8}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={changingPassword}
+                    className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-orange-100 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {changingPassword ? (
+                      <LoaderCircle
+                        size={17}
+                        className="animate-spin"
+                      />
+                    ) : (
+                      <Save size={17} />
+                    )}
+                    {changingPassword
+                      ? 'Updating...'
+                      : 'Update Password'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPasswordForm(false)
+                      setPasswordForm({
+                        currentPassword: '',
+                        newPassword: '',
+                        confirmPassword: '',
+                      })
+                    }}
+                    disabled={changingPassword}
+                    className="rounded-xl px-4 py-3 text-sm font-semibold text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="flex items-start gap-2 border-t border-orange-100 pt-4">
+                  <ShieldCheck
+                    size={15}
+                    className="mt-0.5 shrink-0 text-orange-500"
+                  />
+                  <p className="text-xs leading-relaxed text-gray-500">
+                    After changing your password, the backend asks you
+                    to log in again.
+                  </p>
+                </div>
+              </form>
+            )}
           </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Account Role
-            </label>
-
-            <input
-              type="text"
-              value={profile.role}
-              disabled
-              className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500"
-            />
-          </div>
-        </div>
+        </section>
       </div>
 
-      <div className="mt-7 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              Change Password
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Keep your account secure with a strong password.
-            </p>
-          </div>
-
-          <button
-            onClick={() => setShowPasswordForm((current) => !current)}
-            className="flex items-center gap-2 rounded-lg border border-orange-500 px-4 py-2.5 text-sm font-semibold text-orange-600 hover:bg-orange-50"
-          >
-            <Lock size={17} />
-            {showPasswordForm ? 'Cancel' : 'Change Password'}
-          </button>
-        </div>
-
-        {showPasswordForm && (
-          <form onSubmit={handleChangePassword} className="mt-6 space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Current Password
-              </label>
-              <input
-                type="password"
-                name="currentPassword"
-                value={passwordForm.currentPassword}
-                onChange={handlePasswordChange}
-                autoComplete="current-password"
-                className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                New Password
-              </label>
-              <input
-                type="password"
-                name="newPassword"
-                value={passwordForm.newPassword}
-                onChange={handlePasswordChange}
-                autoComplete="new-password"
-                minLength={8}
-                className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={passwordForm.confirmPassword}
-                onChange={handlePasswordChange}
-                autoComplete="new-password"
-                minLength={8}
-                className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={changingPassword}
-              className="flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
-            >
-              {changingPassword && (
-                <LoaderCircle size={17} className="animate-spin" />
-              )}
-              Update Password
-            </button>
-
-            <p className="text-xs text-gray-500">
-              After changing your password, the backend asks you to log in again.
-            </p>
-          </form>
-        )}
+      <div className="mt-7 flex items-center justify-center gap-2 text-xs text-gray-400">
+        <ShieldCheck size={14} />
+        Your account information is managed securely by CampusBite.
       </div>
     </div>
   )

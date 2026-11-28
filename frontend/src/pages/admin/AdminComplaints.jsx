@@ -5,7 +5,7 @@ export default function AdminComplaints() {
     <ComplaintList
       endpoint="/complaints/admin"
       title="Complaint Management"
-      subtitle="Review all submitted complaints, view complainant identities, and remove complaints when necessary."
+      subtitle="Review submitted complaints, verify complainant details, and manage reported issues."
       adminMode
       showAdminNote
     />

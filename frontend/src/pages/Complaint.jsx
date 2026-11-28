@@ -9,11 +9,15 @@ import {
   X,
   FileText,
   Image as ImageIcon,
-  AlertCircle,
   ShieldCheck,
   LoaderCircle,
   Send,
   Store,
+  MessageSquare,
+  ClipboardList,
+  LockKeyhole,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react'
 
 const API_URL = (
@@ -35,12 +39,10 @@ export default function Complaint() {
 
   const [shops, setShops] = useState([])
   const [categories, setCategories] = useState([])
-
   const [shopId, setShopId] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [description, setDescription] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
-
   const [attachments, setAttachments] = useState([])
   const [loadingData, setLoadingData] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -78,6 +80,14 @@ export default function Complaint() {
     }
   }, [])
 
+  useEffect(() => {
+    return () => {
+      attachments.forEach((item) => {
+        if (item.preview) URL.revokeObjectURL(item.preview)
+      })
+    }
+  }, [attachments])
+
   function handleFileChange(event) {
     const selectedFiles = Array.from(event.target.files || [])
     event.target.value = ''
@@ -111,10 +121,7 @@ export default function Complaint() {
       })
     }
 
-    setAttachments((previous) => [
-      ...previous,
-      ...newAttachments,
-    ])
+    setAttachments((previous) => [...previous, ...newAttachments])
   }
 
   function removeAttachment(id) {
@@ -187,6 +194,7 @@ export default function Complaint() {
         if (item.preview) URL.revokeObjectURL(item.preview)
       })
 
+      setAttachments([])
       navigate('/complaints/my')
     } catch (error) {
       toast.error(
@@ -198,286 +206,374 @@ export default function Complaint() {
     }
   }
 
+  const inputClass =
+    'w-full rounded-2xl border border-gray-200/90 bg-gray-50/70 px-4 py-3.5 text-sm text-gray-800 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+
   return (
-    <div className="mx-auto max-w-3xl pb-12">
+    <div className="mx-auto max-w-5xl pb-12">
       <button
         type="button"
         onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-2 text-sm font-semibold text-gray-600 transition hover:text-orange-600"
+        className="mb-6 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 shadow-sm transition hover:border-orange-200 hover:text-orange-600"
       >
-        <ArrowLeft size={18} />
+        <ArrowLeft size={17} />
         Go Back
       </button>
 
-      <div className="mb-8 rounded-3xl bg-gradient-to-r from-gray-950 to-orange-950 px-6 py-10 text-white sm:px-10">
-        <span className="mb-4 inline-flex rounded-full border border-orange-400/30 bg-orange-500/10 px-4 py-1.5 text-xs font-semibold tracking-wide text-orange-300">
-          CAMPUSBITE SUPPORT
-        </span>
+      <section className="relative mb-8 overflow-hidden rounded-[30px] bg-gradient-to-br from-[#171b1b] via-[#242522] to-[#552b17] px-6 py-9 text-white shadow-xl sm:px-10 sm:py-11">
+        <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-orange-500/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-lime-400/10 blur-3xl" />
 
-        <h1 className="mb-3 text-3xl font-extrabold sm:text-4xl">
-          Submit a Complaint
-        </h1>
+        <div className="relative z-10 max-w-2xl">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-orange-300/20 bg-orange-400/10 px-4 py-2 text-xs font-bold tracking-[0.16em] text-orange-300">
+            <MessageSquare size={14} />
+            CAMPUSBITE SUPPORT
+          </div>
 
-        <p className="max-w-xl text-sm leading-6 text-gray-300">
-          Help us improve campus food services. Share your experience
-          and let us know what needs attention.
-        </p>
+          <h1 className="text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl">
+            Your Voice Matters<span className="text-orange-400">.</span>
+          </h1>
+
+          <p className="mt-4 max-w-xl text-sm leading-7 text-gray-300 sm:text-base">
+            Help us make campus food services better. Tell us about your
+            experience and our team will look into your concern.
+          </p>
+
+          <div className="mt-7 flex flex-wrap gap-3">
+            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-medium text-gray-200">
+              <ShieldCheck size={15} className="text-lime-400" />
+              Secure submission
+            </div>
+            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-medium text-gray-200">
+              <LockKeyhole size={14} className="text-orange-300" />
+              Anonymous option
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute bottom-8 right-10 hidden h-28 w-28 items-center justify-center rounded-[30px] border border-white/10 bg-white/[0.06] backdrop-blur-sm lg:flex">
+          <ClipboardList size={58} strokeWidth={1.2} className="text-orange-300" />
+        </div>
+      </section>
+
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {[
+          { number: '01', title: 'Choose a shop', icon: Store },
+          { number: '02', title: 'Explain the issue', icon: MessageSquare },
+          { number: '03', title: 'Submit securely', icon: ShieldCheck },
+        ].map((step) => {
+          const Icon = step.icon
+
+          return (
+            <div
+              key={step.number}
+              className="flex items-center gap-3 rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                <Icon size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold tracking-widest text-orange-500">
+                  STEP {step.number}
+                </p>
+                <p className="mt-1 text-sm font-bold text-gray-800">
+                  {step.title}
+                </p>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       <form
         onSubmit={handleSubmit}
-        className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8"
+        className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white shadow-[0_12px_50px_rgba(31,41,55,0.06)]"
       >
-        <div className="mb-7">
-          <h2 className="text-xl font-bold text-gray-900">
-            Complaint Details
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Please provide accurate information about your experience.
-          </p>
-        </div>
-
-        {loadingData ? (
-          <div className="flex items-center justify-center gap-3 py-12 text-gray-500">
-            <LoaderCircle className="animate-spin" size={22} />
-            Loading shops and categories...
-          </div>
-        ) : (
-          <>
-            <div className="mb-6">
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Select Shop <span className="text-red-500">*</span>
-              </label>
-
-              <div className="relative">
-                <Store
-                  size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                />
-
-                <select
-                  value={shopId}
-                  onChange={(event) => setShopId(event.target.value)}
-                  required
-                  className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
-                >
-                  <option value="">Choose a campus shop</option>
-
-                  {shops.map((shop) => (
-                    <option key={shop.id} value={shop.id}>
-                      {shop.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {shops.length === 0 && (
-                <p className="mt-2 text-sm text-red-500">
-                  No active shops are currently available.
-                </p>
-              )}
+        <div className="border-b border-gray-100 px-6 py-6 sm:px-9">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
+              <ClipboardList size={23} />
             </div>
-
-            <div className="mb-6">
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Complaint Category <span className="text-red-500">*</span>
-              </label>
-
-              <select
-                value={categoryId}
-                onChange={(event) => setCategoryId(event.target.value)}
-                required
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
-              >
-                <option value="">Choose a category</option>
-
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-
-              {categories.length === 0 && (
-                <p className="mt-2 text-sm text-red-500">
-                  No complaint categories are currently available.
-                </p>
-              )}
-            </div>
-
-            <div className="mb-6">
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Complaint Details <span className="text-red-500">*</span>
-              </label>
-
-              <textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                required
-                rows={6}
-                maxLength={65535}
-                placeholder="Describe your complaint in detail..."
-                className="w-full resize-y rounded-xl border border-gray-200 px-4 py-3 text-sm leading-6 outline-none transition placeholder:text-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
-              />
-
-              <p className="mt-2 text-right text-xs text-gray-400">
-                {description.length} characters
+            <div>
+              <h2 className="text-xl font-extrabold text-gray-900">
+                Complaint Details
+              </h2>
+              <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+                Complete the information below to submit your complaint.
               </p>
             </div>
+          </div>
+        </div>
 
-            <div className="mb-6 rounded-xl border border-gray-200 p-5">
-              <div className="mb-3 flex items-center justify-between">
+        <div className="space-y-7 px-6 py-7 sm:px-9 sm:py-9">
+          {loadingData ? (
+            <div className="flex min-h-64 flex-col items-center justify-center gap-4 text-gray-500">
+              <LoaderCircle size={34} className="animate-spin text-orange-500" />
+              <p className="text-sm font-medium">
+                Loading shops and complaint categories...
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-800">
-                    Attach Evidence
-                  </h3>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Upload photos or PDF documents (Optional)
-                  </p>
+                  <label className="mb-2.5 flex items-center gap-2 text-sm font-bold text-gray-800">
+                    <Store size={16} className="text-orange-500" />
+                    Select Shop <span className="text-red-500">*</span>
+                  </label>
+
+                  <select
+                    value={shopId}
+                    onChange={(event) => setShopId(event.target.value)}
+                    required
+                    className={`${inputClass} appearance-none`}
+                  >
+                    <option value="">Choose a campus shop</option>
+                    {shops.map((shop) => (
+                      <option key={shop.id} value={shop.id}>
+                        {shop.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {shops.length === 0 && (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs text-red-500">
+                      <AlertCircle size={14} />
+                      No active shops are currently available.
+                    </p>
+                  )}
                 </div>
 
-                <Upload size={21} className="text-orange-500" />
+                <div>
+                  <label className="mb-2.5 flex items-center gap-2 text-sm font-bold text-gray-800">
+                    <ClipboardList size={16} className="text-orange-500" />
+                    Complaint Category <span className="text-red-500">*</span>
+                  </label>
+
+                  <select
+                    value={categoryId}
+                    onChange={(event) => setCategoryId(event.target.value)}
+                    required
+                    className={inputClass}
+                  >
+                    <option value="">Choose a category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {categories.length === 0 && (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs text-red-500">
+                      <AlertCircle size={14} />
+                      No complaint categories are currently available.
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <label className="flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-gray-200 px-4 py-8 text-center transition hover:border-orange-400 hover:bg-orange-50/40">
-                <Upload size={28} className="mb-3 text-orange-500" />
+              <div>
+                <div className="mb-2.5 flex items-center justify-between gap-3">
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                    <MessageSquare size={16} className="text-orange-500" />
+                    Describe Your Complaint <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-xs font-medium text-gray-400">
+                    Required
+                  </span>
+                </div>
 
-                <span className="text-sm font-semibold text-gray-700">
-                  Click to upload files
-                </span>
-
-                <span className="mt-2 text-xs text-gray-400">
-                  JPG, PNG, WEBP or PDF Â· Max 5 MB each Â· Up to 3 files
-                </span>
-
-                <input
-                  type="file"
-                  multiple
-                  accept=".jpg,.jpeg,.png,.webp,.pdf"
-                  onChange={handleFileChange}
-                  disabled={attachments.length >= MAX_FILES}
-                  className="hidden"
+                <textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  required
+                  rows={7}
+                  maxLength={65535}
+                  placeholder="Explain what happened, when it happened, and any details that can help us understand the issue..."
+                  className={`${inputClass} min-h-44 resize-y leading-7`}
                 />
-              </label>
 
-              {attachments.length > 0 && (
-                <div className="mt-4 space-y-3">
-                  {attachments.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3"
-                    >
-                      {item.preview ? (
-                        <img
-                          src={item.preview}
-                          alt={item.file.name}
-                          className="h-12 w-12 rounded-lg object-cover"
-                        />
-                      ) : item.file.type === 'application/pdf' ? (
-                        <FileText
-                          size={30}
-                          className="shrink-0 text-red-500"
-                        />
-                      ) : (
-                        <ImageIcon
-                          size={30}
-                          className="shrink-0 text-orange-500"
-                        />
-                      )}
+                <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
+                  <span>Please provide clear and accurate information.</span>
+                  <span className="font-semibold tabular-nums">
+                    {description.length} characters
+                  </span>
+                </div>
+              </div>
 
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-gray-800">
-                          {item.file.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {(item.file.size / (1024 * 1024)).toFixed(2)} MB
+              <div className="rounded-3xl border border-dashed border-orange-200 bg-gradient-to-br from-orange-50/70 to-amber-50/30 p-5 sm:p-6">
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-orange-600 shadow-sm">
+                        <Upload size={19} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900">
+                          Attach Evidence
+                        </h3>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Photos or PDF documents · Optional
                         </p>
                       </div>
-
-                      <button
-                        type="button"
-                        onClick={() => removeAttachment(item.id)}
-                        className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
-                        aria-label="Remove attachment"
-                      >
-                        <X size={18} />
-                      </button>
                     </div>
-                  ))}
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-orange-600 shadow-sm">
+                    {attachments.length}/{MAX_FILES}
+                  </span>
                 </div>
-              )}
 
-              <p className="mt-3 text-right text-xs text-gray-400">
-                {attachments.length}/{MAX_FILES} files selected
+                <label
+                  className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-orange-200 bg-white/80 px-4 py-8 text-center transition ${
+                    attachments.length >= MAX_FILES
+                      ? 'cursor-not-allowed opacity-50'
+                      : 'cursor-pointer hover:border-orange-400 hover:bg-white'
+                  }`}
+                >
+                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-500">
+                    <Upload size={25} />
+                  </div>
+                  <span className="text-sm font-bold text-gray-800">
+                    Click to upload files
+                  </span>
+                  <span className="mt-2 text-xs text-gray-400">
+                    JPG, PNG, WEBP or PDF · Max 5 MB each
+                  </span>
+
+                  <input
+                    type="file"
+                    multiple
+                    accept=".jpg,.jpeg,.png,.webp,.pdf"
+                    onChange={handleFileChange}
+                    disabled={attachments.length >= MAX_FILES}
+                    className="hidden"
+                  />
+                </label>
+
+                {attachments.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    {attachments.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 rounded-2xl border border-orange-100 bg-white p-3 shadow-sm"
+                      >
+                        {item.preview ? (
+                          <img
+                            src={item.preview}
+                            alt={item.file.name}
+                            className="h-14 w-14 rounded-xl object-cover"
+                          />
+                        ) : item.file.type === 'application/pdf' ? (
+                          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-500">
+                            <FileText size={27} />
+                          </div>
+                        ) : (
+                          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
+                            <ImageIcon size={27} />
+                          </div>
+                        )}
+
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-gray-800">
+                            {item.file.name}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-400">
+                            {(item.file.size / (1024 * 1024)).toFixed(2)} MB
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(item.id)}
+                          className="rounded-xl p-2.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+                          aria-label="Remove attachment"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="mt-4 text-center text-xs text-gray-400">
+                  {MAX_FILES - attachments.length} upload slot(s) remaining
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-orange-100 bg-[#fffaf3] p-5 sm:p-6">
+                <label className="flex cursor-pointer items-start gap-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
+                    <LockKeyhole size={20} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-sm font-extrabold text-gray-900">
+                      Submit anonymously
+                    </span>
+                    <span className="mt-1 block text-xs leading-6 text-gray-500">
+                      Hide your identity from the public complaint feed.
+                      CampusBite administrators can still see your identity.
+                    </span>
+                  </div>
+
+                  <input
+                    type="checkbox"
+                    checked={isAnonymous}
+                    onChange={(event) => setIsAnonymous(event.target.checked)}
+                    className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-orange-500"
+                  />
+                </label>
+              </div>
+            </>
+          )}
+
+          <div className="flex items-start gap-3 rounded-2xl border border-lime-100 bg-lime-50/60 p-4">
+            <CheckCircle2 size={21} className="mt-0.5 shrink-0 text-lime-700" />
+            <div>
+              <p className="text-sm font-bold text-gray-800">
+                Your feedback is important
+              </p>
+              <p className="mt-1 text-xs leading-6 text-gray-500">
+                Your complaint will be reviewed by the CampusBite team.
+                Please provide genuine information and respectful feedback.
               </p>
             </div>
+          </div>
 
-            <div className="mb-7 rounded-xl border border-orange-100 bg-orange-50/60 p-4">
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={isAnonymous}
-                  onChange={(event) => setIsAnonymous(event.target.checked)}
-                  className="mt-1 h-4 w-4 accent-orange-500"
-                />
+          <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              disabled={submitting}
+              className="rounded-2xl border border-gray-200 bg-white px-7 py-3.5 text-sm font-bold text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
 
-                <span>
-                  <span className="block text-sm font-semibold text-gray-800">
-                    Submit anonymously
-                  </span>
-                  <span className="mt-1 block text-xs leading-5 text-gray-500">
-                    Your identity will be hidden from the public complaint
-                    feed. CampusBite administrators can still see your identity.
-                  </span>
-                </span>
-              </label>
-            </div>
-          </>
-        )}
-
-        <div className="mb-7 flex items-start gap-3 rounded-xl bg-gray-50 p-4">
-          <ShieldCheck
-            size={20}
-            className="mt-0.5 shrink-0 text-green-600"
-          />
-          <p className="text-xs leading-5 text-gray-500">
-            Your complaint will be reviewed by the CampusBite team.
-            Please provide genuine information and respectful feedback.
-          </p>
-        </div>
-
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            disabled={submitting}
-            className="rounded-xl border border-gray-200 px-6 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="submit"
-            disabled={
-              loadingData ||
-              submitting ||
-              shops.length === 0 ||
-              categories.length === 0
-            }
-            className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-7 py-3 text-sm font-semibold text-white shadow-md shadow-orange-100 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submitting ? (
-              <>
-                <LoaderCircle size={18} className="animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              <>
-                <Send size={17} />
-                Submit Complaint
-              </>
-            )}
-          </button>
+            <button
+              type="submit"
+              disabled={
+                loadingData ||
+                submitting ||
+                shops.length === 0 ||
+                categories.length === 0
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:from-orange-600 hover:to-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? (
+                <>
+                  <LoaderCircle size={18} className="animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send size={17} />
+                  Submit Complaint
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </form>
     </div>

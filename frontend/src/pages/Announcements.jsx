@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useState } from 'react'
 import {
   Bell,
@@ -18,6 +19,13 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
+  Sparkles,
+  ArrowUpRight,
+  Send,
+  Clock3,
+  ShieldCheck,
+  FileImage,
+  CircleCheck,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../api/axios'
@@ -25,6 +33,16 @@ import { useAuth } from '../context/AuthContext'
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '')
   .replace(/\/api\/?$/, '')
+
+const MAX_FILES = 3
+const MAX_FILE_SIZE = 5 * 1024 * 1024
+
+const ALLOWED_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+]
 
 function getImageUrl(imageUrl) {
   if (!imageUrl) return ''
@@ -35,15 +53,6 @@ function getImageUrl(imageUrl) {
 
   return `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
 }
-const MAX_FILES = 3
-const MAX_FILE_SIZE = 5 * 1024 * 1024
-
-const ALLOWED_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'application/pdf',
-]
 
 function formatDate(date) {
   if (!date) return ''
@@ -69,7 +78,6 @@ function getInitials(name) {
     .join('')
 }
 
-// Fetch protected attachments using Axios and JWT.
 function AttachmentItem({ attachment }) {
   const [fileUrl, setFileUrl] = useState('')
   const [loading, setLoading] = useState(true)
@@ -103,7 +111,7 @@ function AttachmentItem({ attachment }) {
             const errorData = JSON.parse(errorText)
             message = errorData.message || message
           } catch {
-            // Keep the default error message.
+            // Keep default error message.
           }
         } else {
           message = err.response?.data?.message || message
@@ -132,65 +140,74 @@ function AttachmentItem({ attachment }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
-        <LoaderCircle size={16} className="animate-spin" />
-        Loading {fileName}...
+      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+          <LoaderCircle size={19} className="animate-spin" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-gray-700">
+            {fileName}
+          </p>
+          <p className="mt-1 text-xs text-gray-400">Loading attachment...</p>
+        </div>
       </div>
     )
   }
 
   if (error || !fileUrl) {
     return (
-      <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600">
-        {fileName}: {error || 'Attachment unavailable.'}
+      <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-600">
+        <p className="font-bold">{fileName}</p>
+        <p className="mt-1 text-xs">{error || 'Attachment unavailable.'}</p>
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="group overflow-hidden rounded-2xl border border-gray-100 bg-white transition hover:border-orange-200 hover:shadow-md">
       {isImage ? (
         <a href={fileUrl} target="_blank" rel="noreferrer">
           <img
             src={fileUrl}
             alt={fileName}
-            className="max-h-72 w-full bg-gray-50 object-contain"
+            className="max-h-72 w-full bg-gray-50 object-contain transition duration-500 group-hover:scale-[1.01]"
           />
         </a>
       ) : (
-        <div className="flex items-center gap-3 bg-gray-50 p-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
-            <FileText size={22} />
+        <div className="flex items-center gap-3 bg-gradient-to-r from-red-50 to-orange-50 p-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
+            <FileText size={23} />
           </div>
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold text-gray-800">
               {fileName}
             </p>
-            <p className="text-xs text-gray-500">PDF document</p>
+            <p className="mt-1 text-xs font-medium text-gray-500">
+              PDF document
+            </p>
           </div>
 
           <a
             href={fileUrl}
             target="_blank"
             rel="noreferrer"
-            className="rounded-lg p-2 text-gray-500 hover:bg-white hover:text-orange-600"
+            className="rounded-xl bg-white p-2.5 text-gray-500 shadow-sm transition hover:text-orange-600"
             title="Open PDF"
           >
-            <ExternalLink size={18} />
+            <ExternalLink size={17} />
           </a>
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-3 py-2">
+      <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-3 py-3">
         <div className="flex min-w-0 items-center gap-2">
           {isImage ? (
-            <ImageIcon size={15} className="shrink-0 text-gray-400" />
+            <ImageIcon size={15} className="shrink-0 text-emerald-500" />
           ) : (
-            <FileText size={15} className="shrink-0 text-gray-400" />
+            <FileText size={15} className="shrink-0 text-red-500" />
           )}
-
-          <span className="truncate text-xs text-gray-500">
+          <span className="truncate text-xs font-medium text-gray-500">
             {fileName}
           </span>
         </div>
@@ -198,7 +215,7 @@ function AttachmentItem({ attachment }) {
         <a
           href={fileUrl}
           download={fileName}
-          className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-orange-600 hover:bg-orange-50"
+          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-orange-50 px-3 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100"
         >
           <Download size={14} />
           Download
@@ -243,13 +260,11 @@ export default function Announcements() {
         setRefreshing(true)
       }
 
-
       const endpoint = isOwner
         ? '/announcements/my-announcements'
         : '/announcements'
 
       const response = await api.get(endpoint)
-      setError('')
 
       if (!response.data.success) {
         throw new Error(
@@ -257,6 +272,7 @@ export default function Announcements() {
         )
       }
 
+      setError('')
       setAnnouncements(response.data.announcements || [])
       setShopName(response.data.shop?.name || '')
       setShopLogo(response.data.shop?.logo_url || '')
@@ -274,19 +290,7 @@ export default function Announcements() {
   }, [isOwner])
 
   useEffect(() => {
-    let active = true
-
-    const loadAnnouncements = async () => {
-      if (active) {
-        await fetchAnnouncements()
-      }
-    }
-
-    loadAnnouncements()
-
-    return () => {
-      active = false
-    }
+    fetchAnnouncements()
   }, [fetchAnnouncements])
 
   const openCreateForm = () => {
@@ -410,6 +414,7 @@ export default function Announcements() {
       setShowForm(false)
       setEditingId(null)
       setSelectedFiles([])
+      setExistingAttachmentCount(0)
 
       await fetchAnnouncements()
     } catch (err) {
@@ -464,67 +469,183 @@ export default function Announcements() {
     return matchesSearch && matchesFilter
   })
 
+  const publishedCount = announcements.filter(
+    (item) => Number(item.is_published) === 1
+  ).length
+
+  const draftCount = announcements.length - publishedCount
+
   return (
-    <div className="min-h-screen bg-gray-50/70">
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl space-y-7 pb-12">
 
-        {/* Page Header */}
-        <div className="mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 via-orange-500 to-amber-500 p-6 text-white shadow-lg shadow-orange-200/50 sm:p-8">
-          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-            <div>
-              <div className="mb-3 flex items-center gap-2 text-sm font-bold text-orange-100">
-                <Bell size={17} />
-                CAMPUSBITE COMMUNITY
-              </div>
+      {/* HERO */}
+      <section className="relative isolate overflow-hidden rounded-[2rem] bg-gradient-to-br from-orange-800 via-orange-600 to-amber-500 px-6 py-9 text-white shadow-2xl shadow-orange-900/15 sm:px-10 sm:py-11">
+        <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full border-[35px] border-white/10" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/3 h-64 w-64 rounded-full bg-amber-300/20 blur-3xl" />
 
-              <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-                Announcements
-              </h1>
+        <div className="relative z-10 flex flex-col justify-between gap-7 sm:flex-row sm:items-center">
+          <div className="max-w-2xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-xs font-bold tracking-wider text-white backdrop-blur-sm">
+              <Sparkles size={14} />
+              CAMPUSBITE COMMUNITY
+            </span>
 
-              <p className="mt-2 max-w-xl text-sm leading-6 text-orange-50 sm:text-base">
-                Stay updated with the latest news, offers and updates
-                from campus food shops.
-              </p>
-            </div>
+            <h1 className="mt-5 text-3xl font-black tracking-tight sm:text-4xl">
+              Announcements
+            </h1>
 
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center self-start rounded-2xl border border-white/20 bg-white/15 sm:self-center">
-              <Megaphone size={34} />
+            <p className="mt-3 max-w-xl text-sm leading-7 text-orange-50 sm:text-base">
+              Stay connected with the latest news, important updates and
+              announcements from your campus food community.
+            </p>
+
+            <div className="mt-7 flex flex-wrap gap-5 border-t border-white/20 pt-5 text-xs font-semibold text-orange-50">
+              <span className="flex items-center gap-2">
+                <Bell size={15} />
+                Community updates
+              </span>
+              <span className="flex items-center gap-2">
+                <Store size={15} />
+                Campus shops
+              </span>
+              <span className="flex items-center gap-2">
+                <Paperclip size={15} />
+                Photos and documents
+              </span>
             </div>
           </div>
-        </div>
 
-        {/* Owner Shop Information */}
-        {isOwner && shopName && (
-          <div className="mb-5 flex items-center gap-3 rounded-2xl border border-orange-100 bg-orange-50 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-orange-100 text-orange-600">
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center self-start rounded-3xl border border-white/20 bg-white/15 shadow-inner backdrop-blur-md sm:h-28 sm:w-28 sm:self-center">
+            <Megaphone size={49} strokeWidth={1.5} />
+          </div>
+        </div>
+      </section>
+
+      {/* OWNER SHOP INFORMATION */}
+      {isOwner && shopName && (
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-orange-100 bg-white/80 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-orange-50 text-orange-600">
               {shopLogo ? (
                 <img
                   src={getImageUrl(shopLogo)}
                   alt={shopName}
+                  className="h-full w-full object-cover"
                   onError={(event) => {
                     event.currentTarget.style.display = 'none'
                   }}
-                  className="h-full w-full object-cover"
                 />
               ) : (
-                <Store size={20} />
+                <Store size={22} />
               )}
             </div>
 
             <div>
-              <p className="text-xs font-semibold text-orange-600">
-                MANAGING ANNOUNCEMENTS FOR
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-orange-600">
+                Managing announcements for
               </p>
-              <p className="font-bold text-gray-800">{shopName}</p>
+              <p className="mt-1 font-black text-gray-900">{shopName}</p>
             </div>
           </div>
-        )}
 
-        {/* Toolbar */}
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <span className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
+            <ShieldCheck size={15} />
+            Owner workspace
+          </span>
+        </section>
+      )}
+
+      {/* OWNER STATS */}
+      {isOwner && (
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/80 bg-white/80 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-500">Total</span>
+              <div className="rounded-xl bg-orange-50 p-2 text-orange-600">
+                <Megaphone size={18} />
+              </div>
+            </div>
+            <p className="mt-3 text-3xl font-black tabular-nums text-gray-900">
+              {announcements.length}
+            </p>
+            <p className="mt-1 text-xs text-gray-400">Announcements</p>
+          </div>
+
+          <div className="rounded-2xl border border-white/80 bg-white/80 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-500">Published</span>
+              <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
+                <CircleCheck size={18} />
+              </div>
+            </div>
+            <p className="mt-3 text-3xl font-black tabular-nums text-gray-900">
+              {publishedCount}
+            </p>
+            <p className="mt-1 text-xs text-gray-400">Visible to students</p>
+          </div>
+
+          <div className="col-span-2 rounded-2xl border border-white/80 bg-white/80 p-5 shadow-sm sm:col-span-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-500">Drafts</span>
+              <div className="rounded-xl bg-amber-50 p-2 text-amber-600">
+                <EyeOff size={18} />
+              </div>
+            </div>
+            <p className="mt-3 text-3xl font-black tabular-nums text-gray-900">
+              {draftCount}
+            </p>
+            <p className="mt-1 text-xs text-gray-400">Not published</p>
+          </div>
+        </section>
+      )}
+
+      {/* TOOLBAR */}
+      <section className="space-y-4">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-orange-700">
+              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-orange-600" />
+              Stay Informed
+            </p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-gray-900">
+              Latest Updates
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Explore what's happening around campus.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => fetchAnnouncements(true)}
+              disabled={refreshing}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-600 shadow-sm transition hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
+            >
+              <RefreshCw
+                size={16}
+                className={refreshing ? 'animate-spin' : ''}
+              />
+              Refresh
+            </button>
+
+            {isOwner && (
+              <button
+                type="button"
+                onClick={openCreateForm}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-orange-600/15 transition hover:-translate-y-0.5 hover:bg-orange-700"
+              >
+                <Plus size={18} />
+                Create Announcement
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/80 p-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search
-              size={19}
+              size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
             />
 
@@ -532,227 +653,230 @@ export default function Announcements() {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search announcements..."
-              className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+              placeholder="Search announcements, shops..."
+              className="w-full rounded-xl border border-gray-100 bg-gray-50/80 py-3 pl-11 pr-4 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-orange-300 focus:bg-white focus:ring-4 focus:ring-orange-50"
             />
           </div>
 
+          {isOwner && (
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'all', label: 'All' },
+                { value: 'published', label: 'Published' },
+                { value: 'drafts', label: 'Drafts' },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setFilter(item.value)}
+                  className={`rounded-xl px-4 py-3 text-xs font-bold transition ${
+                    filter === item.value
+                      ? 'bg-gray-900 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-700'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* LOADING */}
+      {loading && (
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-white/80 bg-white/80 py-20 shadow-sm">
+          <div className="rounded-2xl bg-orange-50 p-4">
+            <LoaderCircle
+              size={34}
+              className="animate-spin text-orange-600"
+            />
+          </div>
+          <p className="mt-4 text-sm font-semibold text-gray-600">
+            Loading announcements...
+          </p>
+          <p className="mt-1 text-xs text-gray-400">
+            Getting the latest campus updates
+          </p>
+        </div>
+      )}
+
+      {/* ERROR */}
+      {!loading && error && (
+        <div className="rounded-3xl border border-red-100 bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-500">
+            <Bell size={29} />
+          </div>
+
+          <h3 className="mt-5 text-xl font-black text-gray-900">
+            Unable to load announcements
+          </h3>
+
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
+            {error}
+          </p>
+
           <button
             type="button"
-            onClick={() => fetchAnnouncements(true)}
-            disabled={refreshing}
-            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-600 transition hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
+            onClick={() => fetchAnnouncements()}
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-700"
           >
-            <RefreshCw
-              size={16}
-              className={refreshing ? 'animate-spin' : ''}
-            />
-            Refresh
+            <RefreshCw size={16} />
+            Try Again
           </button>
+        </div>
+      )}
 
-          {isOwner && (
+      {/* EMPTY STATE */}
+      {!loading && !error && filteredAnnouncements.length === 0 && (
+        <div className="rounded-3xl border border-white/80 bg-white/80 px-6 py-16 text-center shadow-sm">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-orange-50 to-amber-100 text-orange-500">
+            {search ? <Search size={36} /> : <Megaphone size={36} />}
+          </div>
+
+          <h3 className="mt-5 text-xl font-black text-gray-900">
+            {search
+              ? 'No matching announcements'
+              : filter === 'drafts'
+                ? 'No draft announcements'
+                : isOwner
+                  ? 'No announcements yet'
+                  : 'No announcements available'}
+          </h3>
+
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-7 text-gray-500">
+            {search
+              ? 'Try another keyword to find what you are looking for.'
+              : isOwner
+                ? 'Create your first announcement and share important updates with campus students.'
+                : 'Shop announcements will appear here when they are published.'}
+          </p>
+
+          {isOwner && !search && filter === 'all' && (
             <button
               type="button"
               onClick={openCreateForm}
-              className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-md shadow-orange-200 transition hover:bg-orange-600"
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-700"
             >
-              <Plus size={18} />
+              <Plus size={17} />
               Create Announcement
             </button>
           )}
         </div>
+      )}
 
-        {/* Owner Filters */}
-        {isOwner && (
-          <div className="mb-6 flex flex-wrap gap-2">
-            {[
-              { value: 'all', label: 'All' },
-              { value: 'published', label: 'Published' },
-              { value: 'drafts', label: 'Drafts' },
-            ].map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setFilter(item.value)}
-                className={`rounded-full px-4 py-2 text-xs font-bold transition ${
-                  filter === item.value
-                    ? 'bg-orange-500 text-white shadow-sm'
-                    : 'border border-gray-200 bg-white text-gray-500 hover:border-orange-300 hover:text-orange-600'
-                }`}
+      {/* ANNOUNCEMENT FEED */}
+      {!loading && !error && filteredAnnouncements.length > 0 && (
+        <div className="space-y-5">
+          {filteredAnnouncements.map((announcement) => {
+            const published = Number(announcement.is_published) === 1
+            const shopLabel =
+              announcement.shop_name || shopName || 'Campus Shop'
+
+            return (
+              <article
+                key={announcement.id}
+                className="group overflow-hidden rounded-3xl border border-white/80 bg-white/90 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-orange-100 hover:shadow-xl hover:shadow-orange-900/5"
               >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        )}
+                <div className="p-5 sm:p-7">
 
-        {/* Loading */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-100 bg-white py-20">
-            <LoaderCircle
-              size={34}
-              className="animate-spin text-orange-500"
-            />
-            <p className="mt-3 text-sm font-medium text-gray-500">
-              Loading announcements...
-            </p>
-          </div>
-        )}
-
-        {/* Error */}
-        {!loading && error && (
-          <div className="rounded-2xl border border-red-100 bg-white p-8 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
-              <Bell size={22} />
-            </div>
-
-            <h3 className="mt-4 font-bold text-gray-800">
-              Unable to load announcements
-            </h3>
-
-            <p className="mt-2 text-sm text-gray-500">{error}</p>
-
-            <button
-              type="button"
-              onClick={() => fetchAnnouncements()}
-              className="mt-5 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-orange-600"
-            >
-              Try Again
-            </button>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && filteredAnnouncements.length === 0 && (
-          <div className="rounded-2xl border border-gray-100 bg-white px-6 py-16 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50 text-orange-400">
-              <Megaphone size={30} />
-            </div>
-
-            <h3 className="mt-5 text-lg font-black text-gray-800">
-              {search
-                ? 'No matching announcements'
-                : isOwner
-                  ? 'No announcements yet'
-                  : 'No announcements available'}
-            </h3>
-
-            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">
-              {isOwner
-                ? 'Create your first announcement to share updates with campus students.'
-                : 'Shop announcements will appear here when they are published.'}
-            </p>
-
-            {isOwner && !search && (
-              <button
-                type="button"
-                onClick={openCreateForm}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white hover:bg-orange-600"
-              >
-                <Plus size={17} />
-                Create Announcement
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Announcement Feed */}
-        {!loading && !error && filteredAnnouncements.length > 0 && (
-          <div className="space-y-5">
-            {filteredAnnouncements.map((announcement) => {
-              const published =
-                Number(announcement.is_published) === 1
-
-              const shopLabel =
-                announcement.shop_name || shopName || 'Campus Shop'
-
-              return (
-                <article
-                  key={announcement.id}
-                  className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-md"
-                >
-                  <div className="p-5 sm:p-6">
-
-                    {/* Shop Header */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        {announcement.shop_logo ? (
-                          <img
-                            src={getImageUrl(announcement.shop_logo)}
-                            alt={shopLabel}
-                            className="h-12 w-12 rounded-xl border border-gray-100 object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-sm font-black text-orange-600">
-                            {getInitials(shopLabel)}
-                          </div>
-                        )}
-
-                        <div className="min-w-0">
-                          <h3 className="truncate text-sm font-black text-gray-800 sm:text-base">
-                            {shopLabel}
-                          </h3>
-
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-400">
-                            <CalendarDays size={13} />
-                            <span>
-                              {formatDate(announcement.created_at)}
-                            </span>
-                          </div>
+                  {/* SHOP HEADER */}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      {announcement.shop_logo ? (
+                        <img
+                          src={getImageUrl(announcement.shop_logo)}
+                          alt={shopLabel}
+                          className="h-12 w-12 shrink-0 rounded-2xl border border-gray-100 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 text-sm font-black text-orange-700">
+                          {getInitials(shopLabel)}
                         </div>
-                      </div>
-
-                      {(isOwner || isAdmin) && (
-                        <span
-                          className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
-                            published
-                              ? 'bg-green-50 text-green-600'
-                              : 'bg-amber-50 text-amber-600'
-                          }`}
-                        >
-                          {published ? 'Published' : 'Draft'}
-                        </span>
                       )}
-                    </div>
 
-                    {/* Announcement Content */}
-                    <div className="mt-5">
-                      <h2 className="text-xl font-black leading-snug text-gray-900 sm:text-2xl">
-                        {announcement.title}
-                      </h2>
-
-                      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-gray-600">
-                        {announcement.body}
-                      </p>
-                    </div>
-
-                    {/* Attachments */}
-                    {announcement.attachments?.length > 0 && (
-                      <div className="mt-5 space-y-3">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-gray-400">
-                          <Paperclip size={14} />
-                          Attachments ({announcement.attachments.length})
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {announcement.attachments.map((attachment) => (
-                            <AttachmentItem
-                              key={attachment.id}
-                              attachment={attachment}
-                            />
-                          ))}
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-black text-gray-900 sm:text-base">
+                          {shopLabel}
+                        </h3>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                          <span className="flex items-center gap-1">
+                            <CalendarDays size={13} />
+                            {formatDate(announcement.created_at)}
+                          </span>
                         </div>
                       </div>
-                    )}
+                    </div>
 
-                    {/* Owner/Admin Actions */}
                     {(isOwner || isAdmin) && (
-                      <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider ${
+                          published
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-amber-50 text-amber-700'
+                        }`}
+                      >
+                        {published ? (
+                          <Eye size={12} />
+                        ) : (
+                          <EyeOff size={12} />
+                        )}
+                        {published ? 'Published' : 'Draft'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* CONTENT */}
+                  <div className="mt-6">
+                    <div className="mb-3 flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-orange-600">
+                      <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+                      Campus Update
+                    </div>
+
+                    <h2 className="text-xl font-black leading-snug tracking-tight text-gray-900 transition group-hover:text-orange-800 sm:text-2xl">
+                      {announcement.title}
+                    </h2>
+
+                    <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-gray-600">
+                      {announcement.body}
+                    </p>
+                  </div>
+
+                  {/* ATTACHMENTS */}
+                  {announcement.attachments?.length > 0 && (
+                    <div className="mt-6 border-t border-gray-100 pt-5">
+                      <div className="mb-3 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-gray-500">
+                        <Paperclip size={15} className="text-orange-500" />
+                        Attachments
+                        <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] text-orange-700">
+                          {announcement.attachments.length}
+                        </span>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {announcement.attachments.map((attachment) => (
+                          <AttachmentItem
+                            key={attachment.id}
+                            attachment={attachment}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ACTIONS */}
+                  {(isOwner || isAdmin) && (
+                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+                      <span className="text-xs font-medium text-gray-400">
+                        {isOwner ? 'Announcement management' : 'Admin controls'}
+                      </span>
+
+                      <div className="flex flex-wrap gap-2">
                         {isOwner && (
                           <button
                             type="button"
                             onClick={() => openEditForm(announcement)}
-                            className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
+                            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
                           >
                             <Pencil size={14} />
                             Edit
@@ -762,66 +886,84 @@ export default function Announcements() {
                         <button
                           type="button"
                           onClick={() => handleDelete(announcement)}
-                          className="flex items-center gap-2 rounded-lg border border-red-100 px-3 py-2 text-xs font-bold text-red-500 transition hover:bg-red-50"
+                          className="inline-flex items-center gap-2 rounded-xl border border-red-100 px-4 py-2.5 text-xs font-bold text-red-500 transition hover:bg-red-50"
                         >
                           <Trash2 size={14} />
                           Delete
                         </button>
                       </div>
-                    )}
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-        )}
+                    </div>
+                  )}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
 
-        {/* Results Count */}
-        {!loading && !error && filteredAnnouncements.length > 0 && (
-          <p className="mt-6 text-center text-xs font-medium text-gray-400">
+      {/* RESULTS */}
+      {!loading && !error && filteredAnnouncements.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#dfe5d2] pt-5">
+          <p className="text-xs font-medium text-gray-500">
             Showing {filteredAnnouncements.length} announcement(s)
           </p>
-        )}
-      </div>
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+            <ShieldCheck size={14} />
+            CampusBite community updates
+          </span>
+        </div>
+      )}
 
-      {/* Create / Edit Modal */}
+      {/* CREATE / EDIT MODAL */}
       {showForm && isOwner && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-gray-950/60 p-3 backdrop-blur-sm sm:p-5"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeForm()
           }}
         >
-          <div className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="my-auto w-full max-w-2xl overflow-hidden rounded-3xl border border-white/20 bg-white shadow-2xl">
 
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 sm:px-6">
-              <div>
-                <h2 className="text-lg font-black text-gray-900">
-                  {editingId ? 'Edit Announcement' : 'Create Announcement'}
-                </h2>
+            {/* MODAL HEADER */}
+            <div className="relative overflow-hidden bg-gradient-to-r from-orange-700 to-amber-500 px-5 py-6 text-white sm:px-7">
+              <div className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full border-[22px] border-white/10" />
 
-                <p className="mt-1 text-xs text-gray-500">
-                  Share important updates with campus students.
-                </p>
+              <div className="relative z-10 flex items-start justify-between gap-4">
+                <div>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1.5 text-[10px] font-bold tracking-wider">
+                    <Megaphone size={13} />
+                    CAMPUSBITE ANNOUNCEMENTS
+                  </span>
+
+                  <h2 className="mt-3 text-xl font-black sm:text-2xl">
+                    {editingId ? 'Edit Announcement' : 'Create Announcement'}
+                  </h2>
+
+                  <p className="mt-1 text-xs leading-5 text-orange-50 sm:text-sm">
+                    Share important updates with campus students.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  disabled={submitting}
+                  className="rounded-xl bg-white/15 p-2.5 text-white transition hover:bg-white/25 disabled:opacity-50"
+                  aria-label="Close form"
+                >
+                  <X size={20} />
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={closeForm}
-                disabled={submitting}
-                className="rounded-xl p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-              >
-                <X size={21} />
-              </button>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5 p-5 sm:p-6">
-
+            {/* FORM */}
+            <form
+              onSubmit={handleSubmit}
+              className="max-h-[75vh] space-y-5 overflow-y-auto p-5 sm:p-7"
+            >
               <div>
-                <label className="mb-2 block text-sm font-bold text-gray-700">
-                  Announcement Title *
+                <label className="mb-2 block text-sm font-extrabold text-gray-800">
+                  Announcement Title <span className="text-orange-600">*</span>
                 </label>
 
                 <input
@@ -831,18 +973,18 @@ export default function Announcements() {
                   onChange={handleInputChange}
                   maxLength={150}
                   required
-                  placeholder="Enter announcement title"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                  placeholder="e.g. Special lunch offer this week"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3.5 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-50"
                 />
 
-                <p className="mt-1 text-right text-xs text-gray-400">
-                  {formData.title.length}/150
+                <p className="mt-1.5 text-right text-xs font-medium text-gray-400">
+                  {formData.title.length}/150 characters
                 </p>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-gray-700">
-                  Announcement Details *
+                <label className="mb-2 block text-sm font-extrabold text-gray-800">
+                  Announcement Details <span className="text-orange-600">*</span>
                 </label>
 
                 <textarea
@@ -851,28 +993,36 @@ export default function Announcements() {
                   onChange={handleInputChange}
                   required
                   rows={6}
-                  placeholder="Write your announcement..."
-                  className="w-full resize-y rounded-xl border border-gray-200 px-4 py-3 text-sm leading-6 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                  placeholder="Write your announcement details here..."
+                  className="w-full resize-y rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3.5 text-sm leading-7 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-50"
                 />
               </div>
 
-              {/* Attachment Input */}
+              {/* FILE UPLOAD */}
               <div>
-                <label className="mb-2 block text-sm font-bold text-gray-700">
-                  Attachments
-                </label>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <label className="text-sm font-extrabold text-gray-800">
+                    Attachments
+                  </label>
+                  <span className="text-xs font-semibold text-gray-400">
+                    {existingAttachmentCount + selectedFiles.length}/{MAX_FILES} files
+                  </span>
+                </div>
 
-                <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center transition hover:border-orange-300 hover:bg-orange-50/50">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
-                    <Paperclip size={21} />
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/70 px-4 py-7 text-center transition hover:border-orange-300 hover:bg-orange-50/50">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
+                    <Paperclip size={22} />
                   </div>
 
-                  <span className="mt-3 text-sm font-bold text-gray-700">
+                  <span className="mt-3 text-sm font-extrabold text-gray-800">
                     Choose files to upload
                   </span>
 
-                  <span className="mt-1 text-xs text-gray-400">
-                    JPG, PNG, WEBP or PDF | Max 3 files | 5 MB each
+                  <span className="mt-1 text-xs leading-5 text-gray-400">
+                    JPG, PNG, WEBP or PDF
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    Maximum 3 files · 5 MB each
                   </span>
 
                   <input
@@ -880,6 +1030,7 @@ export default function Announcements() {
                     multiple
                     accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
                     onChange={handleFileChange}
+                    disabled={existingAttachmentCount >= MAX_FILES}
                     className="hidden"
                   />
                 </label>
@@ -889,18 +1040,17 @@ export default function Announcements() {
                     {selectedFiles.map((file, index) => (
                       <div
                         key={`${file.name}-${index}`}
-                        className="flex items-center gap-3 rounded-lg border border-gray-100 bg-white p-3"
+                        className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3"
                       >
-                        <FileText
-                          size={18}
-                          className="shrink-0 text-orange-500"
-                        />
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                          <FileImage size={18} />
+                        </div>
 
-                        <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-700">
+                        <span className="min-w-0 flex-1 truncate text-xs font-bold text-gray-700">
                           {file.name}
                         </span>
 
-                        <span className="shrink-0 text-[10px] text-gray-400">
+                        <span className="shrink-0 text-[10px] font-medium text-gray-400">
                           {(file.size / (1024 * 1024)).toFixed(2)} MB
                         </span>
                       </div>
@@ -908,15 +1058,15 @@ export default function Announcements() {
                   </div>
                 )}
 
-                <p className="mt-2 text-xs text-gray-400">
+                <p className="mt-2 text-xs leading-5 text-gray-400">
                   {editingId
                     ? 'New files will be added to the existing attachments.'
-                    : 'Attachments are optional.'}
+                    : 'Attachments are optional. You can upload images or PDF documents.'}
                 </p>
               </div>
 
-              {/* Publish Toggle */}
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
+              {/* PUBLISH OPTION */}
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-gray-100 bg-gradient-to-r from-gray-50 to-orange-50/40 p-4">
                 <input
                   type="checkbox"
                   checked={formData.is_published}
@@ -926,13 +1076,13 @@ export default function Announcements() {
                       is_published: event.target.checked,
                     }))
                   }
-                  className="mt-1 h-4 w-4 accent-orange-500"
+                  className="mt-1 h-4 w-4 accent-orange-600"
                 />
 
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-sm font-extrabold text-gray-800">
                     {formData.is_published ? (
-                      <Eye size={16} className="text-green-600" />
+                      <Eye size={16} className="text-emerald-600" />
                     ) : (
                       <EyeOff size={16} className="text-amber-600" />
                     )}
@@ -945,12 +1095,12 @@ export default function Announcements() {
                   <p className="mt-1 text-xs leading-5 text-gray-500">
                     {formData.is_published
                       ? 'Students and other authenticated users can see this announcement.'
-                      : 'Only you can see this announcement in your management list.'}
+                      : 'This announcement will remain unpublished.'}
                   </p>
                 </div>
               </label>
 
-              {/* Form Actions */}
+              {/* FORM BUTTONS */}
               <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
@@ -964,7 +1114,7 @@ export default function Announcements() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-md shadow-orange-200 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-600/15 transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {submitting ? (
                     <>
@@ -973,15 +1123,8 @@ export default function Announcements() {
                     </>
                   ) : (
                     <>
-                      {editingId ? (
-                        <Pencil size={16} />
-                      ) : (
-                        <Plus size={17} />
-                      )}
-
-                      {editingId
-                        ? 'Save Changes'
-                        : 'Create Announcement'}
+                      {editingId ? <Pencil size={16} /> : <Send size={16} />}
+                      {editingId ? 'Save Changes' : 'Create Announcement'}
                     </>
                   )}
                 </button>
@@ -993,6 +1136,3 @@ export default function Announcements() {
     </div>
   )
 }
-
-
-
