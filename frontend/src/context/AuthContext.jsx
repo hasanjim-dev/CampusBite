@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useState } from 'react'
 import api from '../api/axios'
 
 const AuthContext = createContext(null)
@@ -39,6 +39,10 @@ export function AuthProvider({ children }) {
     return data.user
   }
 
+  const updateUser = useCallback((updatedUser) => {
+    setUser(updatedUser)
+    localStorage.setItem('user', JSON.stringify(updatedUser))
+  }, [])
   const logout = async () => {
     try {
       await api.post('/auth/logout')
@@ -53,6 +57,7 @@ export function AuthProvider({ children }) {
     user,
     login,
     logout,
+    updateUser,
     isAuthenticated: Boolean(user)
   }
 
@@ -63,4 +68,6 @@ export function AuthProvider({ children }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext)
+
